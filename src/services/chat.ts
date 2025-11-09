@@ -1,0 +1,233 @@
+import { supabase } from '../config/supabase';
+import { Conversation, Message } from '../types';
+
+export const ensureConversation = async (
+  serviceRequestId: string,
+  clientId: string,
+  professionalId: string,
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('ensure_conversation', {
+    p_service_request_id: serviceRequestId,
+    p_client_id: clientId,
+    p_professional_id: professionalId,
+  });
+
+  if (error) throw error;
+  if (!data) throw new Error('Não foi possível criar a conversa.');
+  return data as string;
+};
+
+export const fetchConversations = async (userId: string): Promise<Conversation[]> => {
+  const { data, error } = await supabase
+    .from('conversation_participants')
+    .select(
+      `
+      conversation_id,
+      role,
+      display_name,
+      conversations:conversation_id (
+        id,
+        service_request_id,
+        created_at,
+        messages!messages_conversation_id_fkey (
+          id,
+          content,
+          media_url,
+          media_type,
+          sender_id,
+          created_at
+        ),
+        conversation_participants (
+          user_id,
+          role,
+          display_name
+        )
+      )
+    `,
+    )
+    .eq('user_id', userId)
+    .order('conversations.created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => {
+    const conversation = row.conversations;
+    const participants =
+      conversation?.conversation_participants?.map((participant: any) => ({
+        conversationId: conversation.id,
+        userId: participant.user_id,
+        role: participant.role,
+        displayName: participant.display_name ?? undefined,
+      })) || [];
+
+    const lastMessage = conversation?.messages?.sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0];
+
+    return {
+      id: conversation.id,
+      serviceRequestId: conversation.service_request_id ?? undefined,
+      createdAt: conversation.created_at,
+      participants,
+      lastMessage: lastMessage
+        ? {
+            id: lastMessage.id,
+            conversationId: conversation.id,
+            senderId: lastMessage.sender_id,
+            content: lastMessage.content,
+            mediaUrl: lastMessage.media_url ?? null,
+            mediaType: lastMessage.media_type ?? null,
+            createdAt: lastMessage.created_at,
+            readBy: [],
+          }
+        : undefined,
+    } as Conversation;
+  });
+};
+
+export const fetchMessages = async (conversationId: string, limit = 50): Promise<Message[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select(
+      `
+      id,
+      conversation_id,
+      sender_id,
+      content,
+      media_url,
+      media_type,
+      metadata,
+      created_at,
+      read_by,
+      sender:sender_id (
+        id,
+        name
+      )
+    `,
+    )
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    conversationId: row.conversation_id,
+    senderId: row.sender_id,
+    content: row.content,
+    mediaUrl: row.media_url ?? null,
+    mediaType: row.media_type ?? null,
+    metadata: row.metadata ?? null,
+    createdAt: row.created_at,
+    readBy: row.read_by ?? [],
+    sender: row.sender ? { id: row.sender.id, name: row.sender.name } : undefined,
+  }));
+};
+
+export const fetchConversation = async (conversationId: string): Promise<Conversation | null> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(
+      `
+      id,
+      service_request_id,
+      created_at,
+      conversation_participants (
+        user_id,
+        role,
+        display_name
+      )
+    `,
+    )
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const participants =
+    data.conversation_participants?.map((participant: any) => ({
+      conversationId: data.id,
+      userId: participant.user_id,
+      role: participant.role,
+      displayName: participant.display_name ?? undefined,
+    })) || [];
+
+  return {
+    id: data.id,
+    serviceRequestId: data.service_request_id ?? undefined,
+    createdAt: data.created_at,
+    participants,
+  };
+};
+
+interface SendMessageParams {
+  conversationId: string;
+  senderId: string;
+  content?: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  metadata?: Record<string, any> | null;
+}
+
+export const sendMessage = async ({
+  conversationId,
+  senderId,
+  content,
+  mediaUrl,
+  mediaType,
+  metadata,
+}: SendMessageParams) => {
+  const trimmed = content?.trim() ?? '';
+
+  if (!trimmed && !mediaUrl) {
+    throw new Error('Mensagem vazia.');
+  }
+
+  const { error } = await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: senderId,
+    content: trimmed || null,
+    media_url: mediaUrl ?? null,
+    media_type: mediaType ?? null,
+    metadata: metadata ?? null,
+  });
+
+  if (error) throw error;
+};
+
+export const markMessagesAsRead = async (conversationId: string, userId: string) => {
+  const { error } = await supabase.rpc('mark_messages_as_read', {
+    p_conversation_id: conversationId,
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn('Não foi possível marcar mensagens como lidas:', error);
+  }
+};
+
+export const subscribeToMessages = (
+  conversationId: string,
+  callback: (payload: { new: any }) => void,
+) => {
+  const channel = supabase
+    .channel(`conversation:${conversationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      callback,
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+

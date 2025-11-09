@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Elastiquality - Conectando clientes a profissionais</title>
+    <meta name="title" content="Elastiquality - Conectando clientes a profissionais" />
+    <meta name="description" content="Plataforma portuguesa que conecta clientes a prestadores de serviços locais. Encontre profissionais qualificados para reformas, reparações, aulas e muito mais." />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#2f61a6" />
+    <meta name="msapplication-TileColor" content="#2f61a6" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://elastiquality.pt/" />
+    <meta property="og:title" content="Elastiquality - Conectando clientes a profissionais" />
+    <meta property="og:description" content="Plataforma portuguesa que conecta clientes a prestadores de serviços locais." />
+    <meta property="og:image" content="/assets/images/logo.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://elastiquality.pt/" />
+    <meta property="twitter:title" content="Elastiquality - Conectando clientes a profissionais" />
+    <meta property="twitter:description" content="Plataforma portuguesa que conecta clientes a prestadores de serviços locais." />
+    <meta property="twitter:image" content="/assets/images/logo.png" />
+    
+    <style>
+      /**
+       * Building a better default for React Native Web
+       * https://github.com/necolas/react-native-web/blob/master/packages/react-native-web/src/exports/StyleSheet/initialRules.js
+       */
+      html, body, #root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-y: auto;
+        overscroll-behavior-y: none;
+        text-rendering: optimizeLegibility;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      #root {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Loading screen */
+      .loading-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #ffffff;
+      }
+      
+      .loading-logo {
+        width: 150px;
+        height: 150px;
+        margin-bottom: 20px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      .loading-text {
+        color: #2f61a6;
+        font-size: 18px;
+        font-weight: 500;
+      }
+      
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(0.95);
+        }
+      }
+      
+      /* Hide loading screen when app loads */
+      .app-loaded .loading-screen {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <div style="padding: 20px; text-align: center;">
+        <h1>JavaScript Necessário</h1>
+        <p>Por favor, ative o JavaScript no seu navegador para usar o Elastiquality.</p>
+      </div>
+    </noscript>
+    
+    <!-- Loading Screen -->
+    <div class="loading-screen">
+      <img src="/assets/images/logo.png" alt="Elastiquality" class="loading-logo" />
+      <div class="loading-text">A carregar...</div>
+    </div>
+    
+    <!-- App Root -->
+    <div id="root"></div>
+  </body>
+</html>
+
