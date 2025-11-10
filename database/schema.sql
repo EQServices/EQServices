@@ -551,6 +551,45 @@ ALTER TABLE public.pt_districts ADD COLUMN IF NOT EXISTS code TEXT;
 ALTER TABLE public.pt_municipalities ADD COLUMN IF NOT EXISTS code TEXT;
 ALTER TABLE public.pt_parishes ADD COLUMN IF NOT EXISTS code TEXT;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_district_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_district_id_fkey
+      FOREIGN KEY (district_id)
+      REFERENCES public.pt_districts(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_municipality_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_municipality_id_fkey
+      FOREIGN KEY (municipality_id)
+      REFERENCES public.pt_municipalities(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_parish_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_parish_id_fkey
+      FOREIGN KEY (parish_id)
+      REFERENCES public.pt_parishes(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
 CREATE POLICY "anyone can read pt_districts" ON public.pt_districts
   FOR SELECT USING (true);
 

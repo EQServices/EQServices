@@ -207,6 +207,45 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_purchases ENABLE ROW LEVEL SECURITY;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_district_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_district_id_fkey
+      FOREIGN KEY (district_id)
+      REFERENCES public.pt_districts(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_municipality_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_municipality_id_fkey
+      FOREIGN KEY (municipality_id)
+      REFERENCES public.pt_municipalities(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_parish_id_fkey'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_parish_id_fkey
+      FOREIGN KEY (parish_id)
+      REFERENCES public.pt_parishes(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
 -- Políticas RLS para users
 CREATE POLICY "Users can view own profile" ON public.users
   FOR SELECT USING (auth.uid() = id);

@@ -17,6 +17,8 @@ interface SignUpInput {
     parishId: string;
     label: string;
   };
+  professionalCategories?: string[];
+  professionalRegions?: string[];
 }
 
 interface AuthContextData {
@@ -97,6 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone,
     userType,
     location,
+    professionalCategories,
+    professionalRegions,
   }: SignUpInput) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -109,6 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const now = new Date().toISOString();
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
+      if (!location) {
+        throw new Error('Localização obrigatória não fornecida.');
+      }
+
       // Criar perfil do usuário
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
@@ -118,10 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         last_name: lastName.trim(),
         user_type: userType,
         phone: phone?.trim() || null,
-        district_id: location?.districtId ?? null,
-        municipality_id: location?.municipalityId ?? null,
-        parish_id: location?.parishId ?? null,
-        location_label: location?.label ?? null,
+        district_id: location.districtId,
+        municipality_id: location.municipalityId,
+        parish_id: location.parishId,
+        location_label: location.label,
         created_at: now,
         updated_at: now,
       });
@@ -129,10 +137,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (profileError) throw profileError;
 
       if (userType === 'professional') {
+        const categoriesToInsert = professionalCategories ?? [];
+        const regionsToInsert = professionalRegions ?? [];
+
+        if (categoriesToInsert.length === 0 || regionsToInsert.length === 0) {
+          throw new Error('Dados profissionais obrigatórios não foram fornecidos.');
+        }
+
         const { error: professionalError } = await supabase.from('professionals').insert({
           id: data.user.id,
-          categories: [],
-          regions: [],
+          categories: categoriesToInsert,
+          regions: regionsToInsert,
           credits: 0,
           rating: 0,
           review_count: 0,
