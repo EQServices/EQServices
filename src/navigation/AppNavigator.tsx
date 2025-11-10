@@ -18,6 +18,7 @@ import { ServiceRequestDetailScreen } from '../screens/client/ServiceRequestDeta
 import { ReviewScreen } from '../screens/client/ReviewScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
+import { ClientDashboardScreen } from '../screens/client/ClientDashboardScreen';
 
 // Professional Screens
 import { ProfessionalHomeScreen } from '../screens/professional/ProfessionalHomeScreen';
@@ -69,6 +70,11 @@ const ClientStack = () => (
       name="ClientHome"
       component={ClientHomeScreen}
       options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ClientDashboard"
+      component={ClientDashboardScreen}
+      options={{ title: 'Dashboard' }}
     />
     <Stack.Screen
       name="NewServiceRequest"

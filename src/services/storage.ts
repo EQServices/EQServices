@@ -132,11 +132,11 @@ export const uploadPortfolioImage = async (professionalId: string, fileUri: stri
   });
 };
 
-export const uploadAvatarImage = async (professionalId: string, fileUri: string) => {
+export const uploadAvatarImage = async (userId: string, role: 'professional' | 'client', fileUri: string) => {
   return uploadImageToBucket({
     bucket: AVATAR_BUCKET,
     fileUri,
-    pathPrefix: `professionals/${professionalId}`,
+    pathPrefix: `avatars/${role}/${userId}`,
     maxWidth: 600,
     maxHeight: 600,
     compress: 0.8,

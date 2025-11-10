@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Card, FAB, Chip, Button } from 'react-native-paper';
+import { Text, Card, FAB, Chip, Button, Avatar } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { ServiceRequest } from '../../types';
@@ -111,9 +111,26 @@ export const ClientHomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcomeText}>Olá, {user?.name}!</Text>
-        <Text style={styles.subtitle}>Seus pedidos de serviço</Text>
+        <View style={styles.headerTop}>
+          {user?.avatarUrl ? (
+            <Avatar.Image size={64} source={{ uri: user.avatarUrl }} />
+          ) : (
+            <Avatar.Icon size={64} icon="account" />
+          )}
+          <View style={styles.headerInfo}>
+            <Text style={styles.welcomeText}>Olá, {user?.name}!</Text>
+            <Text style={styles.subtitle}>Seus pedidos de serviço</Text>
+          </View>
+        </View>
         <View style={styles.actionButtons}>
+          <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('ClientDashboard')}
+            textColor={colors.textLight}
+            style={styles.headerButton}
+          >
+            Ver dashboard
+          </Button>
           <Button
             mode="outlined"
             onPress={() => navigation.navigate('EditProfile')}
@@ -170,6 +187,15 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     backgroundColor: colors.primary,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 16,
+  },
+  headerInfo: {
+    flex: 1,
   },
   welcomeText: {
     fontSize: 24,

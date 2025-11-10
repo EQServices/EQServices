@@ -69,12 +69,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select(
+          `
+            id,
+            email,
+            name,
+            first_name,
+            last_name,
+            phone,
+            user_type,
+            district_id,
+            municipality_id,
+            parish_id,
+            location_label,
+            avatar_url,
+            created_at
+          `,
+        )
         .eq('id', userId)
         .single();
 
       if (error) throw error;
-      setUser(data);
+
+      if (data) {
+        const mappedUser: User = {
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          firstName: data.first_name ?? undefined,
+          lastName: data.last_name ?? undefined,
+          phone: data.phone ?? undefined,
+          userType: data.user_type,
+          districtId: data.district_id ?? null,
+          municipalityId: data.municipality_id ?? null,
+          parishId: data.parish_id ?? null,
+          locationLabel: data.location_label ?? null,
+          avatarUrl: data.avatar_url ?? null,
+          createdAt: data.created_at,
+        };
+
+        setUser(mappedUser);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados do usuário:', error);
     } finally {

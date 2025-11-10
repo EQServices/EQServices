@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   municipality_id UUID,
   parish_id UUID,
   location_label TEXT,
+  avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   notification_preferences JSONB DEFAULT '{"chat": true, "leads": true, "proposals": true}'::jsonb
@@ -571,6 +572,9 @@ END $$;
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatar-images', 'avatar-images', true)
 ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 DO $$
 BEGIN

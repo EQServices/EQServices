@@ -13,7 +13,7 @@ import * as ImagePickerLib from 'expo-image-picker';
 const MAX_PORTFOLIO_ITEMS = 10;
 
 export const ManageProfileScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, updateUserContext } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -144,7 +144,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       }
 
       if (newAvatarUri) {
-        const avatarUpload = await uploadAvatarImage(user.id, newAvatarUri);
+        const avatarUpload = await uploadAvatarImage(user.id, 'professional', newAvatarUri);
         finalAvatarUrl = avatarUpload.publicUrl;
       }
 
@@ -167,6 +167,9 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       setAvatarPreview(finalAvatarUrl);
       setNewAvatarUri(null);
       setRemoveAvatar(false);
+      updateUserContext({
+        avatarUrl: finalAvatarUrl ?? undefined,
+      });
       alert('Descrição e portfólio atualizados com sucesso!');
     } catch (err: any) {
       console.error('Erro ao atualizar perfil profissional:', err);

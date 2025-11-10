@@ -12,6 +12,7 @@ export interface User {
   municipalityId?: string | null;
   parishId?: string | null;
   locationLabel?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -28,7 +29,6 @@ export interface Professional extends User {
   reviewCount: number;
   portfolio?: string[];
   description?: string;
-  avatarUrl?: string | null;
 }
 
 export interface ServiceRequest {

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, HelperText, Text, TextInput } from 'react-native-paper';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Avatar, Button, Card, HelperText, Text, TextInput } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../config/supabase';
 import { colors } from '../theme/colors';
+import * as ImagePickerLib from 'expo-image-picker';
+import { uploadAvatarImage } from '../services/storage';
 
 export const EditProfileScreen = ({ navigation }: any) => {
   const { user, updateUserContext } = useAuth();
@@ -21,6 +23,11 @@ export const EditProfileScreen = ({ navigation }: any) => {
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [savingPassword, setSavingPassword] = useState(false);
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+
   useEffect(() => {
     const loadProfile = async () => {
       if (!user?.id) {
@@ -32,7 +39,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
         setLoading(true);
         const { data, error } = await supabase
           .from('users')
-          .select('name, email, phone')
+          .select('name, email, phone, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -42,6 +49,10 @@ export const EditProfileScreen = ({ navigation }: any) => {
           setName(data.name || '');
           setEmail(data.email || '');
           setPhone(data.phone || '');
+          setAvatarUrl(data.avatar_url ?? null);
+          setAvatarPreview(data.avatar_url ?? null);
+          setNewAvatarUri(null);
+          setRemoveAvatar(false);
         }
         setProfileError(null);
       } catch (err: any) {
@@ -54,6 +65,42 @@ export const EditProfileScreen = ({ navigation }: any) => {
 
     loadProfile();
   }, [user?.id]);
+
+  const handleSelectAvatar = async () => {
+    const { status } = await ImagePickerLib.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissão necessária',
+        'Precisamos de acesso às suas fotos para permitir o upload. Verifique as permissões nas definições do dispositivo.',
+      );
+      return;
+    }
+
+    const result = await ImagePickerLib.launchImageLibraryAsync({
+      mediaTypes: ImagePickerLib.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 1,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets?.[0];
+    if (asset?.uri) {
+      setAvatarPreview(asset.uri);
+      setNewAvatarUri(asset.uri);
+      setRemoveAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarPreview(null);
+    setNewAvatarUri(null);
+    if (avatarUrl) {
+      setRemoveAvatar(true);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!user?.id) return;
@@ -69,12 +116,21 @@ export const EditProfileScreen = ({ navigation }: any) => {
       setProfileSuccess(null);
 
       const cleanPhone = phone.trim();
+      let finalAvatarUrl = avatarUrl;
+
+      if (removeAvatar) {
+        finalAvatarUrl = null;
+      } else if (newAvatarUri) {
+        const upload = await uploadAvatarImage(user.id, 'client', newAvatarUri);
+        finalAvatarUrl = upload.publicUrl;
+      }
 
       const { error } = await supabase
         .from('users')
         .update({
           name: name.trim(),
           phone: cleanPhone.length > 0 ? cleanPhone : null,
+          avatar_url: finalAvatarUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -84,7 +140,13 @@ export const EditProfileScreen = ({ navigation }: any) => {
       updateUserContext({
         name: name.trim(),
         phone: cleanPhone.length > 0 ? cleanPhone : undefined,
+        avatarUrl: finalAvatarUrl ?? undefined,
       });
+
+      setAvatarUrl(finalAvatarUrl ?? null);
+      setAvatarPreview(finalAvatarUrl ?? null);
+      setNewAvatarUri(null);
+      setRemoveAvatar(false);
 
       setProfileSuccess('Perfil atualizado com sucesso.');
       if (navigation.canGoBack()) {
@@ -143,6 +205,29 @@ export const EditProfileScreen = ({ navigation }: any) => {
             <Text style={styles.loading}>A carregar dados...</Text>
           ) : (
             <>
+              <View style={styles.avatarSection}>
+                {avatarPreview ? (
+                  <Avatar.Image size={96} source={{ uri: avatarPreview }} />
+                ) : (
+                  <Avatar.Icon size={96} icon="account" />
+                )}
+                <View style={styles.avatarActions}>
+                  <Button
+                    mode="outlined"
+                    onPress={handleSelectAvatar}
+                    textColor={colors.primary}
+                    style={styles.avatarButton}
+                  >
+                    Alterar avatar
+                  </Button>
+                  {avatarPreview || avatarUrl ? (
+                    <Button mode="text" onPress={handleRemoveAvatar} textColor={colors.error}>
+                      Remover avatar
+                    </Button>
+                  ) : null}
+                </View>
+              </View>
+
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Informações pessoais</Text>
                 <TextInput
@@ -245,6 +330,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
+  },
+  avatarSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  avatarActions: {
+    gap: 8,
+  },
+  avatarButton: {
+    alignSelf: 'flex-start',
   },
   input: {
     backgroundColor: colors.background,
