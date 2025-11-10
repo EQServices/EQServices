@@ -228,7 +228,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                   setLocationSelection(selection);
                   setLocationError(null);
                 }}
-                requiredLevel="parish"
+                mode="parish"
                 caption="Selecione distrito, concelho e freguesia."
                 error={locationError || undefined}
               />
@@ -266,7 +266,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                       setProfessionalRegionSelection(selection);
                       setProfessionalRegionError(null);
                     }}
-                    requiredLevel="district"
+                    mode="district"
                     caption="Selecione um distrito e depois clique em adicionar."
                     error={professionalRegionError || undefined}
                   />

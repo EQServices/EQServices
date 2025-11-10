@@ -127,8 +127,8 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
                   setSelectionError(null);
                 }}
                 error={selectionError || undefined}
-                requiredLevel="district"
-                caption="Selecione um distrito e refine até concelho/freguesia se necessário."
+                mode="district"
+                caption="Pesquise pelo distrito onde presta serviços e clique em adicionar."
               />
               <Button
                 mode="outlined"

@@ -1,71 +1,36 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import {
-  ActivityIndicator,
-  Button,
-  Dialog,
-  HelperText,
-  List,
-  Portal,
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import { ActivityIndicator, Dialog, HelperText, List, Portal, Text, TextInput } from 'react-native-paper';
 import { colors } from '../theme/colors';
 import {
   LocationOption,
   LocationSelection,
   formatLocationSelection,
   searchDistricts,
-  searchMunicipalities,
-  searchParishes,
+  searchParishesWithParents,
 } from '../services/locations';
 import { ensureLocationsSeeded } from '../services/locationSync';
-
-type LocationLevel = 'district' | 'municipality' | 'parish';
-
-const levelConfig: Record<
-  LocationLevel,
-  {
-    label: string;
-    description: string;
-  }
-> = {
-  district: {
-    label: 'Distrito',
-    description: 'Selecione o distrito.',
-  },
-  municipality: {
-    label: 'Concelho',
-    description: 'Selecione o concelho (município).',
-  },
-  parish: {
-    label: 'Freguesia',
-    description: 'Selecione a freguesia.',
-  },
-};
 
 interface LocationPickerProps {
   value: LocationSelection;
   onChange: (selection: LocationSelection) => void;
   error?: string;
   style?: any;
-  requiredLevel?: LocationLevel;
+  mode?: 'parish' | 'district';
+  label?: string;
   caption?: string;
 }
-
-const emptySelection: LocationSelection = {};
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   value,
   onChange,
   error,
   style,
-  requiredLevel = 'district',
+  mode = 'parish',
+  label,
   caption,
 }) => {
-  const selection = value ?? emptySelection;
-
-  const [dialogLevel, setDialogLevel] = useState<LocationLevel | null>(null);
+  const [dialogVisible, setDialogVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<LocationOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -73,32 +38,33 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   const [syncing, setSyncing] = useState(false);
   const [syncAttempted, setSyncAttempted] = useState(false);
 
-  const resolvedValue = useMemo<LocationSelection>(() => selection, [selection]);
+  const resolvedValue = useMemo<LocationSelection>(() => value ?? {}, [value]);
+
+  const helper = error ?? caption ?? undefined;
+  const helperType = error ? 'error' : 'info';
+
+  const displayValue = useMemo(() => {
+    if (mode === 'district') {
+      return resolvedValue.districtName ?? '';
+    }
+    return formatLocationSelection(resolvedValue);
+  }, [mode, resolvedValue]);
+
+  const inputLabel =
+    label ?? (mode === 'district' ? 'Distrito de atendimento' : 'Freguesia, Concelho e Distrito');
 
   const closeDialog = () => {
-    setDialogLevel(null);
+    setDialogVisible(false);
     setQuery('');
     setOptions([]);
     setDialogError(null);
   };
 
-  const handleOpenDialog = (level: LocationLevel) => {
-    if (level === 'municipality' && !resolvedValue.districtId) {
-      setDialogError('Selecione primeiro um distrito.');
-      setDialogLevel('municipality');
-      return;
-    }
-
-    if (level === 'parish' && !resolvedValue.municipalityId) {
-      setDialogError('Selecione primeiro um concelho.');
-      setDialogLevel('parish');
-      return;
-    }
-
+  const handleOpenDialog = () => {
     setQuery('');
     setOptions([]);
     setDialogError(null);
-    setDialogLevel(level);
+    setDialogVisible(true);
     if (!syncAttempted) {
       setSyncing(true);
       ensureLocationsSeeded()
@@ -113,10 +79,49 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   };
 
-  const handleSelectOption = (option: LocationOption) => {
-    if (!dialogLevel) return;
+  const fetchOptions = useCallback(async () => {
+    if (!dialogVisible) return;
 
-    if (dialogLevel === 'district') {
+    try {
+      setLoading(true);
+      setDialogError(null);
+
+      let results: LocationOption[] = [];
+      if (mode === 'district') {
+        results = await searchDistricts(query);
+      } else {
+        const parishResults = await searchParishesWithParents(query);
+        results = parishResults.map((item) => ({
+          id: item.parishId,
+          name: item.parishName,
+          municipalityId: item.municipalityId,
+          municipalityName: item.municipalityName,
+          districtId: item.districtId,
+          districtName: item.districtName,
+        }));
+      }
+
+      setOptions(results);
+    } catch (err: any) {
+      console.error('Erro ao carregar localizações:', err);
+      setDialogError(err.message || 'Não foi possível carregar os dados.');
+    } finally {
+      setLoading(false);
+    }
+  }, [dialogVisible, mode, query]);
+
+  useEffect(() => {
+    if (!dialogVisible) return;
+
+    const debounce = setTimeout(() => {
+      fetchOptions();
+    }, 200);
+
+    return () => clearTimeout(debounce);
+  }, [dialogVisible, query, fetchOptions]);
+
+  const handleSelectOption = (option: any) => {
+    if (mode === 'district') {
       onChange({
         districtId: option.id,
         districtName: option.name,
@@ -125,179 +130,36 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         parishId: undefined,
         parishName: undefined,
       });
-    } else if (dialogLevel === 'municipality') {
+    } else {
       onChange({
-        ...resolvedValue,
-        municipalityId: option.id,
-        municipalityName: option.name,
-        parishId: undefined,
-        parishName: undefined,
-      });
-    } else if (dialogLevel === 'parish') {
-      onChange({
-        ...resolvedValue,
+        districtId: option.districtId,
+        districtName: option.districtName,
+        municipalityId: option.municipalityId,
+        municipalityName: option.municipalityName,
         parishId: option.id,
         parishName: option.name,
       });
     }
-
     closeDialog();
   };
 
-  const clearLevel = (level: LocationLevel) => {
-    if (level === 'district') {
-      onChange({});
-    } else if (level === 'municipality') {
-      onChange({
-        ...resolvedValue,
-        municipalityId: undefined,
-        municipalityName: undefined,
-        parishId: undefined,
-        parishName: undefined,
-      });
-    } else if (level === 'parish') {
-      onChange({
-        ...resolvedValue,
-        parishId: undefined,
-        parishName: undefined,
-      });
-    }
+  const clearSelection = () => {
+    onChange({});
   };
-
-  const fetchOptions = useCallback(async () => {
-    if (!dialogLevel) return;
-
-    const ensureSynced = async () => {
-      if (syncAttempted) {
-        return false;
-      }
-      setSyncing(true);
-      try {
-        await ensureLocationsSeeded();
-        setSyncAttempted(true);
-        return true;
-      } catch (syncErr: any) {
-        console.error('Erro durante sincronização automática:', syncErr);
-        setDialogError(syncErr.message || 'Falha ao sincronizar dados de localização.');
-        return false;
-      } finally {
-        setSyncing(false);
-      }
-    };
-
-    try {
-      setLoading(true);
-      setDialogError(null);
-
-      let results: LocationOption[] = [];
-      if (dialogLevel === 'district') {
-        results = await searchDistricts(query);
-      } else if (dialogLevel === 'municipality') {
-        if (!resolvedValue.districtId) {
-          setDialogError('Selecione primeiro um distrito.');
-          setOptions([]);
-          setLoading(false);
-          return;
-        }
-        results = await searchMunicipalities(resolvedValue.districtId, query);
-      } else if (dialogLevel === 'parish') {
-        if (!resolvedValue.municipalityId) {
-          setDialogError('Selecione primeiro um concelho.');
-          setOptions([]);
-          setLoading(false);
-          return;
-        }
-        results = await searchParishes(resolvedValue.municipalityId, query);
-      }
-
-      setOptions(results);
-
-      if (results.length === 0) {
-        const synced = await ensureSynced();
-        if (synced) {
-          await fetchOptions();
-          return;
-        }
-      }
-    } catch (err: any) {
-      console.error('Erro ao carregar localizações:', err);
-      setDialogError(err.message || 'Não foi possível carregar os dados.');
-      const synced = await ensureSynced();
-      if (synced) {
-        await fetchOptions();
-        return;
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [dialogLevel, resolvedValue, query, syncAttempted]);
-
-  useEffect(() => {
-    if (!dialogLevel) return;
-
-    const debounce = setTimeout(() => {
-      fetchOptions();
-    }, 200);
-
-    return () => clearTimeout(debounce);
-  }, [dialogLevel, query, fetchOptions]);
-
-  const requiredMessage = useMemo(() => {
-    if (!requiredLevel) return null;
-
-    if (requiredLevel === 'parish' && !resolvedValue.parishId) {
-      return 'Selecione pelo menos uma freguesia.';
-    }
-    if (requiredLevel === 'municipality' && !resolvedValue.municipalityId) {
-      return 'Selecione pelo menos um concelho.';
-    }
-    if (requiredLevel === 'district' && !resolvedValue.districtId) {
-      return 'Selecione pelo menos um distrito.';
-    }
-    return null;
-  }, [requiredLevel, resolvedValue]);
-
-  const helper = error ?? requiredMessage ?? caption ?? undefined;
-  const helperType = error ? 'error' : 'info';
 
   return (
     <View style={[styles.container, style]}>
       <TextInput
         mode="outlined"
-        label="Distrito"
-        value={resolvedValue.districtName ?? ''}
+        label={inputLabel}
+        value={displayValue}
         editable={false}
-        onPressIn={() => handleOpenDialog('district')}
+        onPressIn={handleOpenDialog}
+        onFocus={handleOpenDialog}
         right={
-          resolvedValue.districtName ? (
-            <TextInput.Icon icon="close" onPress={() => clearLevel('district')} forceTextInputFocus={false} />
-          ) : undefined
-        }
-        style={styles.input}
-      />
-      <TextInput
-        mode="outlined"
-        label="Concelho"
-        value={resolvedValue.municipalityName ?? ''}
-        editable={false}
-        onPressIn={() => handleOpenDialog('municipality')}
-        right={
-          resolvedValue.municipalityName ? (
-            <TextInput.Icon icon="close" onPress={() => clearLevel('municipality')} forceTextInputFocus={false} />
-          ) : undefined
-        }
-        style={styles.input}
-      />
-      <TextInput
-        mode="outlined"
-        label="Freguesia"
-        value={resolvedValue.parishName ?? ''}
-        editable={false}
-        onPressIn={() => handleOpenDialog('parish')}
-        right={
-          resolvedValue.parishName ? (
-            <TextInput.Icon icon="close" onPress={() => clearLevel('parish')} forceTextInputFocus={false} />
-          ) : undefined
+          displayValue
+            ? <TextInput.Icon icon="close" onPress={clearSelection} forceTextInputFocus={false} />
+            : undefined
         }
         style={styles.input}
       />
@@ -308,60 +170,63 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         </HelperText>
       ) : null}
 
-      <Text style={styles.previewLabel}>Resumo selecionado</Text>
-      <Text style={styles.previewValue}>{formatLocationSelection(resolvedValue) || 'Nenhuma seleção feita.'}</Text>
+      {mode === 'parish' ? (
+        <>
+          <Text style={styles.previewLabel}>Resumo selecionado</Text>
+          <Text style={styles.previewValue}>{displayValue || 'Nenhuma seleção feita.'}</Text>
+        </>
+      ) : null}
 
       <Portal>
-        <Dialog visible={dialogLevel !== null} onDismiss={closeDialog}>
+        <Dialog visible={dialogVisible} onDismiss={closeDialog}>
           <Dialog.Title>
-            {dialogLevel ? levelConfig[dialogLevel].label : ''} {dialogLevel ? '' : ''}
+            {mode === 'district' ? 'Selecionar distrito' : 'Selecionar freguesia'}
           </Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
-            {dialogLevel ? (
-              <>
-                <Text style={styles.dialogDescription}>{levelConfig[dialogLevel].description}</Text>
-                <TextInput
-                  mode="outlined"
-                  label="Pesquisar"
-                  value={query}
-                  onChangeText={setQuery}
-                  autoFocus
-                  style={styles.searchInput}
-                  placeholder="Digite para filtrar"
-                />
-                {dialogError ? <HelperText type="error">{dialogError}</HelperText> : null}
-                {loading ? (
-                  <View style={styles.loader}>
-                    <ActivityIndicator animating color={colors.primary} />
-                    <Text style={styles.loaderText}>A carregar opções...</Text>
-                  </View>
-                ) : syncing ? (
-                  <View style={styles.loader}>
-                    <ActivityIndicator animating color={colors.primary} />
-                    <Text style={styles.loaderText}>A sincronizar dados de localização...</Text>
-                  </View>
+            <Text style={styles.dialogDescription}>
+              {mode === 'district'
+                ? 'Pesquise pelo distrito de atendimento.'
+                : 'Pesquise pela freguesia. O concelho e distrito serão preenchidos automaticamente.'}
+            </Text>
+            <TextInput
+              mode="outlined"
+              label="Pesquisar"
+              value={query}
+              onChangeText={setQuery}
+              autoFocus
+              style={styles.searchInput}
+              placeholder="Digite para filtrar"
+            />
+            {dialogError ? <HelperText type="error">{dialogError}</HelperText> : null}
+            {loading || syncing ? (
+              <View style={styles.loader}>
+                <ActivityIndicator animating color={colors.primary} />
+                <Text style={styles.loaderText}>
+                  {syncing ? 'A sincronizar dados de localização...' : 'A carregar opções...'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.listWrapper}>
+                {options.length === 0 ? (
+                  <Text style={styles.emptyText}>Nenhum resultado encontrado.</Text>
                 ) : (
-                  <View style={styles.listWrapper}>
-                    {options.length === 0 ? (
-                      <Text style={styles.emptyText}>Nenhum resultado encontrado.</Text>
-                    ) : (
-                      options.map((option) => (
-                        <List.Item
-                          key={option.id}
-                          title={option.name}
-                          onPress={() => handleSelectOption(option)}
-                          left={(props) => <List.Icon {...props} icon="map-marker" />}
-                        />
-                      ))
-                    )}
-                  </View>
+                  options.map((option: any) => (
+                    <List.Item
+                      key={option.id}
+                      title={
+                        mode === 'district'
+                          ? option.name
+                          : `${option.name} (${option.municipalityName})`
+                      }
+                      description={mode === 'district' ? undefined : option.districtName}
+                      onPress={() => handleSelectOption(option)}
+                      left={(props) => <List.Icon {...props} icon="map-marker" />}
+                    />
+                  ))
                 )}
-              </>
-            ) : null}
+              </View>
+            )}
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={closeDialog}>Fechar</Button>
-          </Dialog.Actions>
         </Dialog>
       </Portal>
     </View>

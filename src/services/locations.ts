@@ -14,6 +14,15 @@ export interface LocationSelection {
   parishName?: string;
 }
 
+export interface ParishSearchResult {
+  parishId: string;
+  parishName: string;
+  municipalityId: string;
+  municipalityName: string;
+  districtId: string;
+  districtName: string;
+}
+
 const sanitizeQuery = (query: string) => query.trim();
 
 const applyQuery = (query: string | undefined) => {
@@ -104,6 +113,52 @@ export const searchParishes = async (
     id: row.id,
     name: row.name,
   }));
+};
+
+export const searchParishesWithParents = async (query: string, limit = 25): Promise<ParishSearchResult[]> => {
+  const trimmed = sanitizeQuery(query);
+
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('pt_parishes')
+    .select(
+      `
+      id,
+      name,
+      municipality:pt_municipalities (
+        id,
+        name,
+        district:pt_districts (
+          id,
+          name
+        )
+      )
+    `,
+    )
+    .ilike('name', applyQuery(query)!)
+    .order('name', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? [])
+    .map((row: any) => ({
+      parishId: row.id,
+      parishName: row.name,
+      municipalityId: row.municipality?.id,
+      municipalityName: row.municipality?.name,
+      districtId: row.municipality?.district?.id,
+      districtName: row.municipality?.district?.name,
+    }))
+    .filter(
+      (result: ParishSearchResult) =>
+        Boolean(result.parishId) && Boolean(result.municipalityId) && Boolean(result.districtId),
+    ) as ParishSearchResult[];
 };
 
 export const formatLocationSelection = (selection: LocationSelection) => {
