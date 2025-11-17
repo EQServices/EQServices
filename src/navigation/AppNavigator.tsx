@@ -6,10 +6,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
 import { ActivityIndicator, View } from 'react-native';
 import * as Linking from 'expo-linking';
+import { useTheme } from 'react-native-paper';
+import { useThemeMode } from '../contexts/ThemeContext';
 
 // Auth Screens
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
+import { TermsOfServiceScreen } from '../screens/TermsOfServiceScreen';
+
+// Public Screens
+import { PublicServiceRequestScreen } from '../screens/public/PublicServiceRequestScreen';
 
 // Client Screens
 import { ClientHomeScreen } from '../screens/client/ClientHomeScreen';
@@ -19,6 +26,8 @@ import { ReviewScreen } from '../screens/client/ReviewScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { ClientDashboardScreen } from '../screens/client/ClientDashboardScreen';
+import { OrderHistoryScreen } from '../screens/client/OrderHistoryScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 
 // Professional Screens
 import { ProfessionalHomeScreen } from '../screens/professional/ProfessionalHomeScreen';
@@ -39,11 +48,27 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const ChatStack = createNativeStackNavigator();
 
+const defaultClientStackOptions = {
+  headerStyle: { backgroundColor: colors.primary },
+  headerTintColor: colors.textLight,
+  headerTitleAlign: 'center' as const,
+  contentStyle: { backgroundColor: colors.background },
+  animation: 'fade_from_bottom' as const,
+};
+
+const defaultProfessionalStackOptions = {
+  headerStyle: { backgroundColor: colors.professional },
+  headerTintColor: colors.textLight,
+  headerTitleAlign: 'center' as const,
+  contentStyle: { backgroundColor: colors.background },
+  animation: 'fade_from_bottom' as const,
+};
+
 const AuthStack = () => (
   <Stack.Navigator
     screenOptions={{
-      headerStyle: { backgroundColor: colors.primary },
-      headerTintColor: colors.textLight,
+      ...defaultClientStackOptions,
+      animation: 'slide_from_right',
     }}
   >
     <Stack.Screen
@@ -56,16 +81,26 @@ const AuthStack = () => (
       component={RegisterScreen}
       options={{ title: 'Criar Conta' }}
     />
+    <Stack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+      options={{ title: 'Política de Privacidade' }}
+    />
+    <Stack.Screen
+      name="TermsOfService"
+      component={TermsOfServiceScreen}
+      options={{ title: 'Termos de Uso' }}
+    />
+    <Stack.Screen
+      name="PublicServiceRequest"
+      component={PublicServiceRequestScreen}
+      options={{ title: 'Pedido de Serviço' }}
+    />
   </Stack.Navigator>
 );
 
 const ClientStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: colors.primary },
-      headerTintColor: colors.textLight,
-    }}
-  >
+  <Stack.Navigator screenOptions={defaultClientStackOptions}>
     <Stack.Screen
       name="ClientHome"
       component={ClientHomeScreen}
@@ -75,6 +110,11 @@ const ClientStack = () => (
       name="ClientDashboard"
       component={ClientDashboardScreen}
       options={{ title: 'Dashboard' }}
+    />
+    <Stack.Screen
+      name="ClientOrderHistory"
+      component={OrderHistoryScreen}
+      options={{ title: 'Histórico de Pedidos' }}
     />
     <Stack.Screen
       name="NewServiceRequest"
@@ -106,16 +146,16 @@ const ClientStack = () => (
       component={EditProfileScreen}
       options={{ title: 'Editar Perfil' }}
     />
+    <Stack.Screen
+      name="Settings"
+      component={SettingsScreen}
+      options={{ title: 'Configurações' }}
+    />
   </Stack.Navigator>
 );
 
 const ClientChatStack = () => (
-  <ChatStack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: colors.primary },
-      headerTintColor: colors.textLight,
-    }}
-  >
+  <ChatStack.Navigator screenOptions={defaultClientStackOptions}>
     <ChatStack.Screen
       name="ChatList"
       component={ChatListScreen}
@@ -137,6 +177,18 @@ const ClientTabs = () => (
       tabBarInactiveTintColor: colors.textSecondary,
       headerStyle: { backgroundColor: colors.primary },
       headerTintColor: colors.textLight,
+      headerTitleAlign: 'center',
+      tabBarStyle: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        overflow: 'hidden',
+        height: 68,
+        paddingBottom: 8,
+      },
+      tabBarLabelStyle: {
+        fontWeight: '600',
+      },
+      animation: 'fade',
     }}
   >
     <Tab.Screen
@@ -161,12 +213,7 @@ const ClientTabs = () => (
 );
 
 const ProfessionalStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: colors.professional },
-      headerTintColor: colors.textLight,
-    }}
-  >
+  <Stack.Navigator screenOptions={defaultProfessionalStackOptions}>
     <Stack.Screen
       name="ProfessionalHome"
       component={ProfessionalHomeScreen}
@@ -232,16 +279,16 @@ const ProfessionalStack = () => (
       component={EditProfileScreen}
       options={{ title: 'Editar Perfil' }}
     />
+    <Stack.Screen
+      name="Settings"
+      component={SettingsScreen}
+      options={{ title: 'Configurações' }}
+    />
   </Stack.Navigator>
 );
 
 const ProfessionalChatStack = () => (
-  <ChatStack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: colors.professional },
-      headerTintColor: colors.textLight,
-    }}
-  >
+  <ChatStack.Navigator screenOptions={defaultProfessionalStackOptions}>
     <ChatStack.Screen
       name="ProChatList"
       component={ChatListScreen}
@@ -287,12 +334,49 @@ const ProfessionalTabs = () => (
 );
 
 const linking = {
-  prefixes: [Linking.createURL('/')],
+  prefixes: [
+    'elastiquality://',
+    'https://elastiquality.pt',
+    Linking.createURL('/'),
+  ],
   config: {
     screens: {
+      AuthStack: {
+        screens: {
+          Login: 'login',
+          Register: 'register',
+          PublicServiceRequest: 'service/:serviceRequestId',
+          PrivacyPolicy: 'privacy',
+          TermsOfService: 'terms',
+        },
+      },
+      ClientStack: {
+        screens: {
+          ClientHome: 'home',
+          ServiceRequestDetail: 'service/:requestId',
+          NewServiceRequest: 'new-service',
+          Review: 'review/:serviceRequestId',
+          ProfessionalProfile: 'profile/:professionalId',
+        },
+      },
+      ClientChat: {
+        screens: {
+          ChatList: 'messages',
+          ChatConversation: 'chat/:conversationId',
+        },
+      },
       ProfessionalStack: {
         screens: {
+          ProfessionalHome: 'opportunities',
+          LeadDetail: 'lead/:leadId',
+          SendProposal: 'proposal/:serviceRequestId',
           CheckoutStatus: 'checkout/:status',
+        },
+      },
+      ProfessionalChat: {
+        screens: {
+          ProChatList: 'messages',
+          ProChatConversation: 'chat/:conversationId',
         },
       },
     },
@@ -301,17 +385,40 @@ const linking = {
 
 export const AppNavigator = () => {
   const { user, loading } = useAuth();
+  const paperTheme = useTheme();
+  const { navigationTheme } = useThemeMode();
+  const navigationRef = React.useRef<any>(null);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: paperTheme.colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
       </View>
     );
   }
 
+  // Configurar deep linking
+  useDeepLinking(
+    {
+      navigate: (screen: string, params?: any) => {
+        navigationRef.current?.navigate(screen, params);
+      },
+      canGoBack: () => navigationRef.current?.canGoBack() ?? false,
+      goBack: () => navigationRef.current?.goBack(),
+      getParent: () => navigationRef.current?.getParent(),
+    },
+    !!user,
+  );
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
       {!user ? (
         <AuthStack />
       ) : user.userType === 'client' ? (

@@ -16,6 +16,8 @@ interface SignUpInput {
     municipalityId: string;
     parishId: string;
     label: string;
+    latitude?: number | null;
+    longitude?: number | null;
   };
   professionalCategories?: string[];
   professionalRegions?: string[];
@@ -167,6 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         municipality_id: location.municipalityId,
         parish_id: location.parishId,
         location_label: location.label,
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
         created_at: now,
         updated_at: now,
       });

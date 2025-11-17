@@ -32,10 +32,14 @@ npm install
 
 3. Configure as variáveis de ambiente:
 ```bash
+# Windows
+copy .env.example .env
+
+# Linux/Mac
 cp .env.example .env
 ```
 
-4. Edite o arquivo `.env` com suas credenciais do Supabase
+4. Edite o arquivo `.env` com suas credenciais do Supabase (veja `.env.example` para referência)
 
 ### Variáveis de ambiente
 

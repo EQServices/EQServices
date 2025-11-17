@@ -4,6 +4,7 @@ import { ActivityIndicator, Card, List, Text } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
+import { MetricBar } from '../../components/Charts';
 
 interface TransactionSummary {
   id: string;
@@ -193,6 +194,19 @@ export const ProfessionalDashboardScreen: React.FC = () => {
           </Card.Content>
         </Card>
       </View>
+
+      <MetricBar
+        title="Taxa de propostas aceites"
+        current={totals.proposalsAccepted}
+        total={totals.proposalsSent || 1}
+        description="Comparativo entre propostas enviadas e aceites."
+      />
+      <MetricBar
+        title="Créditos gastos vs. comprados"
+        current={totals.creditsSpent}
+        total={totals.creditsPurchased || 1}
+        description="Percentagem de créditos já utilizados."
+      />
 
       <View style={styles.metricsRow}>
         <Card style={styles.metricCard}>

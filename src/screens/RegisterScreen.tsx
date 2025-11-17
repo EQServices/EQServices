@@ -7,6 +7,7 @@ import { UserType } from '../types';
 import { LocationPicker } from '../components/LocationPicker';
 import { LocationSelection, formatLocationSelection } from '../services/locations';
 import { SERVICE_CATEGORY_GROUPS } from '../constants/categories';
+import { Coordinates } from '../services/geolocation';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const [firstName, setFirstName] = useState('');
@@ -18,6 +19,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [phone, setPhone] = useState('');
   const [locationSelection, setLocationSelection] = useState<LocationSelection>({});
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [professionalRegions, setProfessionalRegions] = useState<string[]>([]);
   const [professionalRegionSelection, setProfessionalRegionSelection] = useState<LocationSelection>({});
   const [professionalRegionError, setProfessionalRegionError] = useState<string | null>(null);
@@ -133,6 +135,8 @@ export const RegisterScreen = ({ navigation }: any) => {
           municipalityId: locationSelection.municipalityId!,
           parishId: locationSelection.parishId!,
           label: locationLabel,
+          latitude: coordinates?.latitude ?? null,
+          longitude: coordinates?.longitude ?? null,
         },
         professionalCategories: userType === 'professional' ? professionalServices : undefined,
         professionalRegions: userType === 'professional' ? professionalRegions : undefined,
@@ -228,6 +232,10 @@ export const RegisterScreen = ({ navigation }: any) => {
                   setLocationSelection(selection);
                   setLocationError(null);
                 }}
+                onCoordinatesChange={(coords) => {
+                  setCoordinates(coords);
+                }}
+                enableGPS={Platform.OS !== 'web'}
                 mode="parish"
                 caption="Selecione distrito, concelho e freguesia."
                 error={locationError || undefined}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Dialog, HelperText, List, Portal, Text, TextInput } from 'react-native-paper';
+import { Platform, Pressable, StyleSheet, View, Alert } from 'react-native';
+import { ActivityIndicator, Button, Dialog, HelperText, List, Portal, Text, TextInput } from 'react-native-paper';
 import { colors } from '../theme/colors';
 import {
   LocationOption,
@@ -10,33 +10,38 @@ import {
   searchParishesWithParents,
 } from '../services/locations';
 import { ensureLocationsSeeded } from '../services/locationSync';
+import { getCurrentLocation, Coordinates } from '../services/geolocation';
 
 interface LocationPickerProps {
   value: LocationSelection;
   onChange: (selection: LocationSelection) => void;
+  onCoordinatesChange?: (coordinates: Coordinates | null) => void;
   error?: string;
   style?: any;
   mode?: 'parish' | 'district';
   label?: string;
   caption?: string;
+  enableGPS?: boolean;
 }
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   value,
   onChange,
+  onCoordinatesChange,
   error,
   style,
   mode = 'parish',
   label,
   caption,
+  enableGPS = false,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<LocationOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const [syncAttempted, setSyncAttempted] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const resolvedValue = useMemo<LocationSelection>(() => value ?? {}, [value]);
 
@@ -66,16 +71,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     setDialogError(null);
     setDialogVisible(true);
     if (!syncAttempted) {
-      setSyncing(true);
-      ensureLocationsSeeded()
-        .catch((err: any) => {
-          console.error('Erro a sincronizar localizações:', err);
-          setDialogError(err.message || 'Não foi possível sincronizar os dados de localização.');
-        })
-        .finally(() => {
-          setSyncing(false);
-          setSyncAttempted(true);
-        });
+      setSyncAttempted(true);
+      ensureLocationsSeeded().catch((err: any) => {
+        console.warn('Falha ao sincronizar localizações (vai continuar com dados existentes):', err);
+        setDialogError((current) => current ?? 'Não foi possível sincronizar novos dados de localização. Pode continuar a pesquisar normalmente.');
+      });
     }
   };
 
@@ -145,6 +145,47 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
   const clearSelection = () => {
     onChange({});
+    if (onCoordinatesChange) {
+      onCoordinatesChange(null);
+    }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Não disponível', 'A localização GPS não está disponível na versão web.');
+      return;
+    }
+
+    try {
+      setGettingLocation(true);
+      setDialogError(null);
+
+      const coordinates = await getCurrentLocation();
+      
+      if (!coordinates) {
+        return; // Erro já foi tratado em getCurrentLocation
+      }
+
+      // Notificar sobre coordenadas obtidas
+      if (onCoordinatesChange) {
+        onCoordinatesChange(coordinates);
+      }
+
+      // TODO: Implementar geocodificação reversa para encontrar freguesia/distrito
+      // Por enquanto, apenas informamos o usuário que precisa selecionar manualmente
+      Alert.alert(
+        'Localização obtida',
+        `Coordenadas: ${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}\n\nPor favor, selecione sua freguesia abaixo para completar o cadastro.`,
+      );
+
+      // Fechar dialog para que o usuário possa selecionar manualmente
+      // A coordenada já foi salva via onCoordinatesChange
+    } catch (err: any) {
+      console.error('Erro ao obter localização:', err);
+      setDialogError('Não foi possível obter sua localização. Tente selecionar manualmente.');
+    } finally {
+      setGettingLocation(false);
+    }
   };
 
   return (
@@ -194,6 +235,18 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 ? 'Pesquise pelo distrito de atendimento.'
                 : 'Pesquise pela freguesia. O concelho e distrito serão preenchidos automaticamente.'}
             </Text>
+            {enableGPS && mode === 'parish' && Platform.OS !== 'web' && (
+              <Button
+                mode="outlined"
+                icon="crosshairs-gps"
+                onPress={handleUseCurrentLocation}
+                loading={gettingLocation}
+                disabled={gettingLocation}
+                style={styles.gpsButton}
+              >
+                Usar minha localização atual
+              </Button>
+            )}
             <TextInput
               mode="outlined"
               label="Pesquisar"
@@ -204,11 +257,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               placeholder="Digite para filtrar"
             />
             {dialogError ? <HelperText type="error">{dialogError}</HelperText> : null}
-            {loading || syncing ? (
+            {loading ? (
               <View style={styles.loader}>
                 <ActivityIndicator animating color={colors.primary} />
                 <Text style={styles.loaderText}>
-                  {syncing ? 'A sincronizar dados de localização...' : 'A carregar opções...'}
+                  A carregar opções...
                 </Text>
               </View>
             ) : (
@@ -266,6 +319,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     backgroundColor: colors.background,
+  },
+  gpsButton: {
+    marginBottom: 8,
   },
   loader: {
     alignItems: 'center',

@@ -1,5 +1,8 @@
 import { supabase } from '../config/supabase';
 import { Conversation, Message } from '../types';
+import { withCache, CacheStrategy } from './offlineCache';
+import { queueActionIfOffline } from '../components/AppWithOffline';
+import { isOnline } from './network';
 
 export const ensureConversation = async (
   serviceRequestId: string,
@@ -86,43 +89,50 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
 };
 
 export const fetchMessages = async (conversationId: string, limit = 50): Promise<Message[]> => {
-  const { data, error } = await supabase
-    .from('messages')
-    .select(
-      `
-      id,
-      conversation_id,
-      sender_id,
-      content,
-      media_url,
-      media_type,
-      metadata,
-      created_at,
-      read_by,
-      sender:sender_id (
-        id,
-        name
-      )
-    `,
-    )
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
-    .limit(limit);
+  return withCache(
+    `messages_${conversationId}_${limit}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(
+          `
+          id,
+          conversation_id,
+          sender_id,
+          content,
+          media_url,
+          media_type,
+          metadata,
+          created_at,
+          read_by,
+          sender:sender_id (
+            id,
+            name
+          )
+        `,
+        )
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(limit);
 
-  if (error) throw error;
+      if (error) throw error;
 
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    conversationId: row.conversation_id,
-    senderId: row.sender_id,
-    content: row.content,
-    mediaUrl: row.media_url ?? null,
-    mediaType: row.media_type ?? null,
-    metadata: row.metadata ?? null,
-    createdAt: row.created_at,
-    readBy: row.read_by ?? [],
-    sender: row.sender ? { id: row.sender.id, name: row.sender.name } : undefined,
-  }));
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        conversationId: row.conversation_id,
+        senderId: row.sender_id,
+        content: row.content,
+        mediaUrl: row.media_url ?? null,
+        mediaType: row.media_type ?? null,
+        metadata: row.metadata ?? null,
+        createdAt: row.created_at,
+        readBy: row.read_by ?? [],
+        sender: row.sender ? { id: row.sender.id, name: row.sender.name } : undefined,
+      }));
+    },
+    CacheStrategy.NETWORK_FIRST,
+    5 * 60 * 1000, // Cache por 5 minutos
+  );
 };
 
 export const fetchConversation = async (conversationId: string): Promise<Conversation | null> => {
@@ -183,6 +193,26 @@ export const sendMessage = async ({
 
   if (!trimmed && !mediaUrl) {
     throw new Error('Mensagem vazia.');
+  }
+
+  const online = await isOnline();
+
+  // Se offline, adicionar à fila de sincronização
+  if (!online) {
+    await queueActionIfOffline(
+      'SEND_MESSAGE',
+      {
+        conversationId,
+        senderId,
+        content: trimmed || null,
+        mediaUrl: mediaUrl ?? null,
+        mediaType: mediaType ?? null,
+      },
+      false,
+      2, // Alta prioridade
+    );
+    // Retornar sem erro - mensagem será sincronizada depois
+    return;
   }
 
   const { error } = await supabase.from('messages').insert({

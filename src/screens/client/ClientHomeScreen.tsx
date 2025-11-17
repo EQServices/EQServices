@@ -1,15 +1,56 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Card, FAB, Chip, Button, Avatar } from 'react-native-paper';
+import { View, StyleSheet, FlatList, RefreshControl, Alert, Platform } from 'react-native';
+import { Text, Card, FAB, Chip, Button, Avatar, IconButton } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { ServiceRequest } from '../../types';
 import { supabase } from '../../config/supabase';
+import { AppLogo } from '../../components/AppLogo';
+import { SkeletonCardList } from '../../components/SkeletonCard';
+import { withCache, CacheStrategy } from '../../services/offlineCache';
+
+const CONFIRM_LOGOUT_MESSAGE =
+  'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
 
 export const ClientHomeScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Na web, usar confirm do navegador
+      const confirmed = (globalThis as any).window?.confirm(CONFIRM_LOGOUT_MESSAGE);
+      if (!confirmed) return;
+      await performLogout();
+    } else {
+      // No mobile, usar Alert
+      Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Terminar sessão',
+          style: 'destructive',
+          onPress: async () => {
+            await performLogout();
+          },
+        },
+      ]);
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Erro ao terminar sessão:', err);
+      const errorMessage = 'Não foi possível terminar a sessão. Tente novamente.';
+      if (Platform.OS === 'web') {
+        (globalThis as any).window?.alert(errorMessage);
+      } else {
+        Alert.alert('Erro', errorMessage);
+      }
+    }
+  };
 
   const mapServiceRequest = useCallback((row: any): ServiceRequest => {
     return {
@@ -32,14 +73,23 @@ export const ClientHomeScreen = ({ navigation }: any) => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('service_requests')
-        .select('*')
-        .eq('client_id', user.id)
-        .order('created_at', { ascending: false });
+      const cachedRequests = await withCache<ServiceRequest[]>(
+        `client_requests_${user.id}`,
+        async () => {
+          const { data, error } = await supabase
+            .from('service_requests')
+            .select('*')
+            .eq('client_id', user.id)
+            .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests((data || []).map(mapServiceRequest));
+          if (error) throw error;
+          return (data || []).map(mapServiceRequest);
+        },
+        CacheStrategy.NETWORK_FIRST,
+        2 * 60 * 1000, // Cache por 2 minutos
+      );
+      
+      setRequests(cachedRequests);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
@@ -111,6 +161,18 @@ export const ClientHomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <View style={styles.headerTopBar}>
+          <View style={styles.logoWrapper}>
+            <AppLogo size={120} withBackground />
+          </View>
+          <IconButton
+            icon="logout"
+            iconColor={colors.textLight}
+            size={24}
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          />
+        </View>
         <View style={styles.headerTop}>
           {user?.avatarUrl ? (
             <Avatar.Image size={64} source={{ uri: user.avatarUrl }} />
@@ -133,6 +195,14 @@ export const ClientHomeScreen = ({ navigation }: any) => {
           </Button>
           <Button
             mode="outlined"
+            onPress={() => navigation.navigate('ClientOrderHistory')}
+            textColor={colors.textLight}
+            style={styles.headerButton}
+          >
+            Histórico de pedidos
+          </Button>
+          <Button
+            mode="outlined"
             onPress={() => navigation.navigate('EditProfile')}
             textColor={colors.textLight}
             style={styles.headerButton}
@@ -150,12 +220,18 @@ export const ClientHomeScreen = ({ navigation }: any) => {
         </View>
       </View>
 
-      {requests.length === 0 && !loading ? (
+      {loading ? (
+        <SkeletonCardList />
+      ) : requests.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Você ainda não tem pedidos</Text>
+          <Avatar.Icon size={72} icon="clipboard-text-outline" style={styles.emptyIcon} />
+          <Text style={styles.emptyText}>Nenhum pedido por aqui ainda</Text>
           <Text style={styles.emptySubtext}>
-            Clique no botão abaixo para solicitar um serviço
+            Publique seu primeiro pedido e receba propostas de profissionais qualificados.
           </Text>
+          <Button mode="contained" icon="plus" onPress={() => navigation.navigate('NewServiceRequest')}>
+            Criar novo pedido
+          </Button>
         </View>
       ) : (
         <FlatList
@@ -187,6 +263,16 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     backgroundColor: colors.primary,
+  },
+  headerTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  logoWrapper: {
+    alignItems: 'flex-start',
+    flex: 1,
   },
   headerTop: {
     flexDirection: 'row',
@@ -250,12 +336,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    gap: 12,
+  },
+  emptyIcon: {
+    backgroundColor: colors.secondary,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.textSecondary,
-    marginBottom: 8,
+    color: colors.text,
   },
   emptySubtext: {
     fontSize: 14,
@@ -277,6 +366,9 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     borderColor: colors.textLight,
+  },
+  logoutButton: {
+    margin: 0,
   },
 });
 

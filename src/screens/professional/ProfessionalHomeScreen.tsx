@@ -5,6 +5,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { Lead, Professional } from '../../types';
 import { supabase } from '../../config/supabase';
+import { AppLogo } from '../../components/AppLogo';
+import { SkeletonCardList } from '../../components/SkeletonCard';
+import { withCache, CacheStrategy } from '../../services/offlineCache';
 
 export const ProfessionalHomeScreen = ({ navigation }: any) => {
   const { user } = useAuth();
@@ -73,14 +76,23 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const cachedLeads = await withCache<Lead[]>(
+        'professional_leads',
+        async () => {
+          const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
 
-      if (error) throw error;
-      setLeads((data || []).map(mapLead));
+          if (error) throw error;
+          return (data || []).map(mapLead);
+        },
+        CacheStrategy.NETWORK_FIRST,
+        2 * 60 * 1000, // Cache por 2 minutos
+      );
+
+      setLeads(cachedLeads);
     } catch (error) {
       console.error('Erro ao carregar leads:', error);
     } finally {
@@ -150,6 +162,10 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <View style={styles.logoWrapper}>
+          <AppLogo size={60} />
+          <Text style={styles.logoTagline}>Elastiquality Pro</Text>
+        </View>
         <View style={styles.headerTop}>
           {professional?.avatarUrl ? (
             <Avatar.Image size={64} source={{ uri: professional.avatarUrl }} />
@@ -200,9 +216,19 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
 
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Oportunidades Disponíveis</Text>
-        {leads.length === 0 && !loading ? (
+        {loading ? (
+          <SkeletonCardList />
+        ) : leads.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhuma oportunidade disponível no momento</Text>
+            <Avatar.Icon size={72} icon="briefcase-search" style={styles.emptyIcon} />
+            <Text style={styles.emptyText}>Nenhum lead disponível agora</Text>
+            <Text style={styles.emptySubtext}>
+              Atualize a página mais tarde ou ajuste as suas regiões e categorias para receber mais
+              oportunidades.
+            </Text>
+            <Button mode="outlined" icon="refresh" onPress={loadLeads} textColor={colors.professional}>
+              Atualizar oportunidades
+            </Button>
           </View>
         ) : (
           <FlatList
@@ -232,6 +258,16 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     backgroundColor: colors.professional,
+  },
+  logoWrapper: {
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  logoTagline: {
+    color: colors.textLight,
+    fontWeight: '600',
+    marginTop: 4,
+    letterSpacing: 0.4,
   },
   headerTop: {
     flexDirection: 'row',
@@ -310,11 +346,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    gap: 12,
+  },
+  emptyIcon: {
+    backgroundColor: colors.primary,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    maxWidth: 300,
   },
 });
 

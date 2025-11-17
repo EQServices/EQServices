@@ -10,6 +10,9 @@ import { LocationSelection, formatLocationSelection } from '../../services/locat
 import { ImagePicker, ImagePickerItem } from '../../components/ImagePicker';
 import { uploadServiceImage } from '../../services/storage';
 import { notifyLeadAvailable } from '../../services/notifications';
+import { Coordinates } from '../../services/geolocation';
+import { queueActionIfOffline } from '../../components/AppWithOffline';
+import { isOnline } from '../../services/network';
 
 export const NewServiceRequestScreen = ({ navigation }: any) => {
   const { user } = useAuth();
@@ -18,6 +21,7 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
   const [description, setDescription] = useState('');
   const [locationSelection, setLocationSelection] = useState<LocationSelection>({});
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [budget, setBudget] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,6 +56,36 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
         }
       }
 
+      const online = await isOnline();
+
+      // Se offline, adicionar à fila de sincronização
+      if (!online && user?.id) {
+        await queueActionIfOffline(
+          'CREATE_SERVICE_REQUEST',
+          {
+            client_id: user.id,
+            title,
+            category,
+            description,
+            location: locationLabel,
+            latitude: coordinates?.latitude ?? null,
+            longitude: coordinates?.longitude ?? null,
+            budget: budget ? parseFloat(budget) : null,
+            photos: uploadedPhotos,
+          },
+          false,
+          2, // Alta prioridade
+        );
+
+        alert('Pedido criado offline. Será sincronizado quando a conexão for restabelecida.');
+        setLocationSelection({});
+        setLocationError(null);
+        setCoordinates(null);
+        setPhotos([]);
+        navigation.goBack();
+        return;
+      }
+
       // Criar pedido de serviço
       const { data: serviceRequest, error: requestError } = await supabase
         .from('service_requests')
@@ -61,6 +95,8 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
           category,
           description,
           location: locationLabel,
+          latitude: coordinates?.latitude ?? null,
+          longitude: coordinates?.longitude ?? null,
           budget: budget ? parseFloat(budget) : null,
           status: 'pending',
           photos: uploadedPhotos,
@@ -108,6 +144,7 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
       alert('Pedido criado com sucesso! Aguarde propostas dos profissionais.');
       setLocationSelection({});
       setLocationError(null);
+      setCoordinates(null);
       setPhotos([]);
       navigation.goBack();
     } catch (err: any) {
@@ -203,9 +240,13 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
                 setLocationSelection(selection);
                 setLocationError(null);
               }}
+              onCoordinatesChange={(coords) => {
+                setCoordinates(coords);
+              }}
+              enableGPS={Platform.OS !== 'web'}
               error={locationError || undefined}
               style={styles.locationPicker}
-              requiredLevel="parish"
+              mode="parish"
               caption="Selecione distrito, concelho e freguesia do serviço."
             />
 

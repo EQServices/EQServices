@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { Review } from '../types';
+import { withCache, CacheStrategy } from './offlineCache';
 
 export interface ReviewSummary {
   average: number;
@@ -32,23 +33,30 @@ const mapReview = (row: any): Review => ({
 });
 
 export const getProfessionalReviewSummary = async (professionalId: string): Promise<ReviewSummary> => {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('rating', { count: 'exact' })
-    .eq('professional_id', professionalId);
+  return withCache(
+    `review_summary_${professionalId}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('rating', { count: 'exact' })
+        .eq('professional_id', professionalId);
 
-  if (error) {
-    throw error;
-  }
+      if (error) {
+        throw error;
+      }
 
-  const ratings = data?.map((row) => Number(row.rating)) ?? [];
-  const count = ratings.length;
-  const average = count > 0 ? ratings.reduce((sum, value) => sum + value, 0) / count : 0;
+      const ratings = data?.map((row) => Number(row.rating)) ?? [];
+      const count = ratings.length;
+      const average = count > 0 ? ratings.reduce((sum, value) => sum + value, 0) / count : 0;
 
-  return {
-    average,
-    count,
-  };
+      return {
+        average,
+        count,
+      };
+    },
+    CacheStrategy.NETWORK_FIRST,
+    10 * 60 * 1000, // Cache por 10 minutos
+  );
 };
 
 const updateProfessionalAggregates = async (professionalId: string) => {
@@ -87,31 +95,45 @@ export const submitReview = async ({ serviceRequestId, professionalId, clientId,
 };
 
 export const listProfessionalReviews = async (professionalId: string): Promise<ProfessionalReview[]> => {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('id, rating, comment, created_at, client:client_id(name)')
-    .eq('professional_id', professionalId)
-    .order('created_at', { ascending: false });
+  return withCache(
+    `professional_reviews_${professionalId}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('id, rating, comment, created_at, client:client_id(name)')
+        .eq('professional_id', professionalId)
+        .order('created_at', { ascending: false });
 
-  if (error) {
-    throw error;
-  }
+      if (error) {
+        throw error;
+      }
 
-  return (data || []).map((row) => mapReview(row) as ProfessionalReview);
+      return (data || []).map((row) => mapReview(row) as ProfessionalReview);
+    },
+    CacheStrategy.NETWORK_FIRST,
+    5 * 60 * 1000, // Cache por 5 minutos
+  );
 };
 
 export const getClientReviewForRequest = async (serviceRequestId: string, clientId: string) => {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*')
-    .eq('service_request_id', serviceRequestId)
-    .eq('client_id', clientId)
-    .maybeSingle();
+  return withCache(
+    `client_review_${serviceRequestId}_${clientId}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('service_request_id', serviceRequestId)
+        .eq('client_id', clientId)
+        .maybeSingle();
 
-  if (error) {
-    throw error;
-  }
+      if (error) {
+        throw error;
+      }
 
-  return data ? mapReview(data) : null;
+      return data ? mapReview(data) : null;
+    },
+    CacheStrategy.NETWORK_FIRST,
+    5 * 60 * 1000, // Cache por 5 minutos
+  );
 };
 

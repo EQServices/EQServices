@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Conversation } from '../../types';
 import { fetchConversations } from '../../services/chat';
 import { colors } from '../../theme/colors';
+import { withCache, CacheStrategy } from '../../services/offlineCache';
 
 interface ChatListScreenProps {
   navigation: any;
@@ -26,8 +27,15 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({ navigation, rout
     if (!user?.id) return;
     try {
       setLoading(true);
-      const result = await fetchConversations(user.id);
-      setConversations(result);
+      const cachedConversations = await withCache(
+        `conversations_${user.id}`,
+        async () => {
+          return await fetchConversations(user.id);
+        },
+        CacheStrategy.NETWORK_FIRST,
+        2 * 60 * 1000, // Cache por 2 minutos
+      );
+      setConversations(cachedConversations);
     } catch (err) {
       console.error('Erro ao carregar conversas:', err);
     } finally {

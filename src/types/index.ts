@@ -12,6 +12,8 @@ export interface User {
   municipalityId?: string | null;
   parishId?: string | null;
   locationLabel?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   avatarUrl?: string | null;
   createdAt: string;
 }
@@ -38,6 +40,8 @@ export interface ServiceRequest {
   title: string;
   description: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   budget?: number;
   photos?: string[];
   status: 'pending' | 'active' | 'completed' | 'cancelled';

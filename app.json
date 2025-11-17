@@ -7,15 +7,28 @@
     "icon": "./assets/images/icon-512x512.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "elastiquality",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2f61a6"
+      "backgroundColor": "#0f172a",
+      "dark": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#020617"
+      }
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.elastiquality.app",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Precisamos da sua localização para encontrar profissionais próximos a você.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Precisamos da sua localização para encontrar profissionais próximos a você."
+      },
+      "associatedDomains": [
+        "applinks:elastiquality.pt"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +38,31 @@
       "package": "com.elastiquality.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "elastiquality.pt",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "elastiquality"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon-32x32.png",
@@ -43,7 +80,8 @@
           "color": "#2f61a6",
           "sounds": []
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

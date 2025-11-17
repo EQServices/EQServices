@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, Divider, List, Text } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
@@ -14,6 +14,10 @@ import {
   ReviewSummary,
 } from '../../services/reviews';
 import { ImageGallery } from '../../components/ImageGallery';
+import { ShareButton } from '../../components/ShareButton';
+import { getCurrentLocation } from '../../services/geolocation';
+import { searchNearbyProfessionals, ProfessionalWithDistance } from '../../services/professionals';
+import { calculateDistance, formatDistance } from '../../services/geolocation';
 
 interface ServiceRequestDetailScreenProps {
   navigation: any;
@@ -97,6 +101,23 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
   const [completing, setCompleting] = useState(false);
   const { user } = useAuth();
   const tabNavigator = navigation.getParent();
+
+  // Configurar botão de compartilhar no header
+  useLayoutEffect(() => {
+    if (request) {
+      navigation.setOptions({
+        headerRight: () => (
+          <ShareButton
+            serviceRequestId={request.id}
+            title={request.title}
+            category={request.category}
+            location={request.location}
+            variant="icon"
+          />
+        ),
+      });
+    }
+  }, [navigation, request]);
   const handleStartChat = async (professionalId: string) => {
     if (!user?.id || !request) return;
     try {

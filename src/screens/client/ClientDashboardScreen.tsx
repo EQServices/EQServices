@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, List, Text } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, List, Text } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
+import { MetricBar } from '../../components/Charts';
+import { useNavigation } from '@react-navigation/native';
 
 interface RequestResume {
   id: string;
@@ -27,6 +29,7 @@ interface ReviewResume {
 
 export const ClientDashboardScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<RequestResume[]>([]);
   const [proposals, setProposals] = useState<ProposalResume[]>([]);
@@ -172,6 +175,19 @@ export const ClientDashboardScreen: React.FC = () => {
         </Card>
       </View>
 
+      <Card style={styles.quickActionsCard}>
+        <Card.Content style={styles.quickActionsContent}>
+          <Text style={styles.sectionTitle}>Ações rápidas</Text>
+          <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('ClientOrderHistory' as never)}
+            textColor={colors.primary}
+          >
+            Ver histórico completo
+          </Button>
+        </Card.Content>
+      </Card>
+
       <View style={styles.metricsRow}>
         <Card style={styles.metricCard}>
           <Card.Content>
@@ -186,6 +202,19 @@ export const ClientDashboardScreen: React.FC = () => {
           </Card.Content>
         </Card>
       </View>
+
+      <MetricBar
+        title="Taxa de conclusão de pedidos"
+        current={totals.completedRequests}
+        total={totals.totalRequests || 1}
+        description="Proporção de pedidos concluídos em relação ao total criado."
+      />
+      <MetricBar
+        title="Propostas aceites"
+        current={totals.proposalsAccepted}
+        total={totals.proposalsReceived || 1}
+        description="Percentagem de propostas recebidas que foram aceites."
+      />
 
       <Card style={styles.sectionCard}>
         <Card.Content>
@@ -287,6 +316,13 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 16,
     elevation: 2,
+  },
+  quickActionsCard: {
+    borderRadius: 16,
+    elevation: 1,
+  },
+  quickActionsContent: {
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,

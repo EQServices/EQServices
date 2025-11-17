@@ -43,3 +43,6 @@ GoogleService-Info.plist
 /ios
 /android
 node_modules
+
+# Local Netlify folder
+.netlify
