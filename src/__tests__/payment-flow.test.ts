@@ -4,12 +4,13 @@
  * Testa o fluxo completo de compra de créditos via Stripe
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+/**
+ * Testes do Fluxo de Pagamentos
+ * 
+ * Testa o fluxo completo de compra de créditos via Stripe
+ */
 
 describe('Payment Flow', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
 
   describe('Credit Package Validation', () => {
     it('deve validar estrutura de pacote de créditos', () => {

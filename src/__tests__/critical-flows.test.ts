@@ -5,12 +5,16 @@
  * que o sistema funciona corretamente em produção.
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+/**
+ * Testes Críticos - Fluxos Essenciais do Sistema
+ * 
+ * Estes testes cobrem os fluxos mais importantes para garantir
+ * que o sistema funciona corretamente em produção.
+ */
 
 describe('Critical Flows', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+
+describe('Critical Flows', () => {
 
   describe('Authentication Flow', () => {
     it('deve validar formato de email correto', () => {
