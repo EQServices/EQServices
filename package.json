@@ -7,10 +7,15 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "npx expo export --platform web",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --maxWorkers=2"
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test:critical": "jest src/__tests__/critical-flows.test.ts",
+    "test:payment": "jest src/__tests__/payment-flow.test.ts",
+    "analyze:bundle": "powershell -ExecutionPolicy Bypass -File scripts/analisar-bundle-size.ps1",
+    "optimize:bundle": "powershell -ExecutionPolicy Bypass -File scripts/otimizar-bundle.ps1"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
