@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { TextInput, Button, Text, Card, RadioButton, HelperText, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { TextInput, Button, Text, Card, RadioButton, HelperText, Chip, Checkbox } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
 import { UserType } from '../types';
@@ -8,6 +8,7 @@ import { LocationPicker } from '../components/LocationPicker';
 import { LocationSelection, formatLocationSelection } from '../services/locations';
 import { SERVICE_CATEGORY_GROUPS } from '../constants/categories';
 import { Coordinates } from '../services/geolocation';
+import { AppLogo } from '../components/AppLogo';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const [firstName, setFirstName] = useState('');
@@ -25,6 +26,8 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [professionalRegionError, setProfessionalRegionError] = useState<string | null>(null);
   const [professionalServices, setProfessionalServices] = useState<string[]>([]);
   const [professionalServicesError, setProfessionalServicesError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { signUp } = useAuth();
@@ -112,15 +115,22 @@ export const RegisterScreen = ({ navigation }: any) => {
         hasProfessionalErrors = true;
       }
 
-      if (hasProfessionalErrors) {
-        setError('Preencha os dados profissionais obrigatórios.');
-        return;
-      }
+    if (hasProfessionalErrors) {
+      setError('Preencha os dados profissionais obrigatórios.');
+      return;
     }
+  }
 
-    setLoading(true);
-    setError('');
-    setLocationError(null);
+  if (!acceptedTerms) {
+    setTermsError('Deve aceitar os termos de uso e política de privacidade para continuar.');
+    setError('Deve aceitar os termos de uso e política de privacidade.');
+    return;
+  }
+
+  setLoading(true);
+  setError('');
+  setLocationError(null);
+  setTermsError(null);
 
     try {
       await signUp({
@@ -156,11 +166,7 @@ export const RegisterScreen = ({ navigation }: any) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <AppLogo size={200} withBackground />
         </View>
 
         <Card style={styles.card}>
@@ -336,13 +342,48 @@ export const RegisterScreen = ({ navigation }: any) => {
               </>
             ) : null}
 
+            <View style={styles.termsSection}>
+              <View style={styles.checkboxContainer}>
+                <Checkbox
+                  status={acceptedTerms ? 'checked' : 'unchecked'}
+                  onPress={() => {
+                    setAcceptedTerms(!acceptedTerms);
+                    setTermsError(null);
+                    if (error && error.includes('aceitar')) {
+                      setError('');
+                    }
+                  }}
+                  color={colors.primary}
+                />
+                <View style={styles.termsTextContainer}>
+                  <Text style={styles.termsText}>
+                    Aceito os{' '}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => navigation.navigate('TermsOfService')}
+                    >
+                      Termos de Uso
+                    </Text>
+                    {' '}e a{' '}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => navigation.navigate('PrivacyPolicy')}
+                    >
+                      Política de Privacidade
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+              {termsError ? <HelperText type="error">{termsError}</HelperText> : null}
+            </View>
+
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Button
               mode="contained"
               onPress={handleRegister}
               loading={loading}
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               style={styles.button}
               buttonColor={colors.primary}
             >
@@ -376,10 +417,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 30,
-  },
-  logo: {
-    width: 120,
-    height: 120,
   },
   card: {
     elevation: 4,
@@ -463,6 +500,28 @@ const styles = StyleSheet.create({
   error: {
     color: colors.error,
     marginBottom: 12,
+  },
+  termsSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  termsTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  termsText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: colors.primary,
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 });
 

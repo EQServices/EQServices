@@ -307,12 +307,14 @@ CREATE INDEX IF NOT EXISTS idx_credit_transactions_professional ON public.credit
 
 **Status**: ✅ **Links adicionados** - Links legais adicionados no rodapé e na tela de Settings
 
+**Status**: ✅ **Implementado** - Links legais e consentimento de cookies implementados
+
 **Próximos passos**:
 - [x] ✅ Adicionar links no rodapé do site/web app (LandingPage.tsx) - FEITO
 - [x] ✅ Criar telas no app para exibir os documentos (já existem) - FEITO
 - [x] ✅ Adicionar links na tela de Settings - FEITO
-- [ ] Implementar banner de consentimento de cookies
-- [ ] Adicionar checkbox de aceite no registro (RegisterScreen.tsx)
+- [x] ✅ Implementar banner de consentimento de cookies - FEITO (`CookieConsentBanner.tsx`)
+- [x] ✅ Adicionar checkbox de aceite no registro (RegisterScreen.tsx) - FEITO
 
 ---
 

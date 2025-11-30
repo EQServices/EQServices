@@ -12,6 +12,7 @@ import { AppWithOffline } from './src/components/AppWithOffline';
 import { initializeMonitoring } from './src/config/analytics';
 import { useAnalyticsSetup } from './src/hooks/useAnalytics';
 import { logger } from './src/services/logger';
+import { CookieConsentBanner } from './src/components/CookieConsentBanner';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -76,6 +77,7 @@ export default function App() {
               {!isWeb && overlayVisible ? (
                 <SplashOverlay duration={700} onFinish={() => setOverlayVisible(false)} />
               ) : null}
+              {isWeb && <CookieConsentBanner />}
             </View>
           </AppWithOffline>
         ) : (
