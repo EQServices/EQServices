@@ -8,6 +8,7 @@ import { ActivityIndicator, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useTheme } from 'react-native-paper';
 import { useThemeMode } from '../contexts/ThemeContext';
+import { useDeepLinking } from '../hooks/useDeepLinking';
 
 // Auth Screens
 import { LoginScreen } from '../screens/LoginScreen';
@@ -151,6 +152,16 @@ const ClientStack = () => (
       component={SettingsScreen}
       options={{ title: 'Configurações' }}
     />
+    <Stack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+      options={{ title: 'Política de Privacidade' }}
+    />
+    <Stack.Screen
+      name="TermsOfService"
+      component={TermsOfServiceScreen}
+      options={{ title: 'Termos de Uso' }}
+    />
   </Stack.Navigator>
 );
 
@@ -284,6 +295,16 @@ const ProfessionalStack = () => (
       component={SettingsScreen}
       options={{ title: 'Configurações' }}
     />
+    <Stack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+      options={{ title: 'Política de Privacidade' }}
+    />
+    <Stack.Screen
+      name="TermsOfService"
+      component={TermsOfServiceScreen}
+      options={{ title: 'Termos de Uso' }}
+    />
   </Stack.Navigator>
 );
 
@@ -361,8 +382,8 @@ const linking = {
       },
       ClientChat: {
         screens: {
-          ChatList: 'messages',
-          ChatConversation: 'chat/:conversationId',
+          ChatList: 'client-messages',
+          ChatConversation: 'client-chat/:conversationId',
         },
       },
       ProfessionalStack: {
@@ -375,8 +396,8 @@ const linking = {
       },
       ProfessionalChat: {
         screens: {
-          ProChatList: 'messages',
-          ProChatConversation: 'chat/:conversationId',
+          ProChatList: 'professional-messages',
+          ProChatConversation: 'professional-chat/:conversationId',
         },
       },
     },
@@ -388,6 +409,19 @@ export const AppNavigator = () => {
   const paperTheme = useTheme();
   const { navigationTheme } = useThemeMode();
   const navigationRef = React.useRef<any>(null);
+
+  // Configurar deep linking - DEVE ser chamado antes de qualquer return condicional
+  useDeepLinking(
+    {
+      navigate: (screen: string, params?: any) => {
+        navigationRef.current?.navigate(screen, params);
+      },
+      canGoBack: () => navigationRef.current?.canGoBack() ?? false,
+      goBack: () => navigationRef.current?.goBack(),
+      getParent: () => navigationRef.current?.getParent(),
+    },
+    !!user,
+  );
 
   if (loading) {
     return (
@@ -404,18 +438,16 @@ export const AppNavigator = () => {
     );
   }
 
-  // Configurar deep linking
-  useDeepLinking(
-    {
-      navigate: (screen: string, params?: any) => {
-        navigationRef.current?.navigate(screen, params);
-      },
-      canGoBack: () => navigationRef.current?.canGoBack() ?? false,
-      goBack: () => navigationRef.current?.goBack(),
-      getParent: () => navigationRef.current?.getParent(),
-    },
-    !!user,
-  );
+  // Validação de segurança: garantir que o userType está correto
+  // Se o usuário não tiver um tipo válido, mostrar tela de login
+  if (user && user.userType !== 'client' && user.userType !== 'professional') {
+    console.warn('Tipo de usuário inválido:', user.userType);
+    return (
+      <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
+        <AuthStack />
+      </NavigationContainer>
+    );
+  }
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
@@ -423,8 +455,10 @@ export const AppNavigator = () => {
         <AuthStack />
       ) : user.userType === 'client' ? (
         <ClientTabs />
-      ) : (
+      ) : user.userType === 'professional' ? (
         <ProfessionalTabs />
+      ) : (
+        <AuthStack />
       )}
     </NavigationContainer>
   );

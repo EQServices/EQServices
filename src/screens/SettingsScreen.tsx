@@ -274,6 +274,39 @@ export const SettingsScreen = ({ navigation }: any) => {
           />
         </Card.Content>
       </Card>
+
+      {/* Seção Legal */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Text style={styles.sectionTitle}>Documentos Legais</Text>
+          <List.Item
+            title="Política de Privacidade"
+            description="Como coletamos e usamos seus dados"
+            left={(props) => <List.Icon {...props} icon="shield-account" />}
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+          />
+          <Divider />
+          <List.Item
+            title="Termos de Uso"
+            description="Termos e condições de uso da plataforma"
+            left={(props) => <List.Icon {...props} icon="file-document" />}
+            onPress={() => navigation.navigate('TermsOfService')}
+          />
+          <Divider />
+          <List.Item
+            title="Política de Cookies"
+            description="Como usamos cookies e tecnologias similares"
+            left={(props) => <List.Icon {...props} icon="cookie" />}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                window.open('/cookies', '_blank');
+              } else {
+                Alert.alert('Política de Cookies', 'Acesse a política de cookies através do nosso site: https://dainty-gnome-5cbd33.netlify.app/cookies');
+              }
+            }}
+          />
+        </Card.Content>
+      </Card>
     </ScrollView>
   );
 };

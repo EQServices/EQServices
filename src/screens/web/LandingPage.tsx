@@ -161,6 +161,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
         <Text style={styles.footerTitle}>Elastiquality</Text>
         <Text style={styles.footerText}>Marketplace português que conecta clientes a profissionais locais.</Text>
         <Text style={styles.footerText}>Suporte: suporte@elastiquality.pt</Text>
+        <View style={styles.footerLinks}>
+          <Text style={styles.footerLink} onPress={() => window.open('/privacy', '_blank')}>
+            Política de Privacidade
+          </Text>
+          <Text style={styles.footerLinkSeparator}> • </Text>
+          <Text style={styles.footerLink} onPress={() => window.open('/terms', '_blank')}>
+            Termos de Uso
+          </Text>
+          <Text style={styles.footerLinkSeparator}> • </Text>
+          <Text style={styles.footerLink} onPress={() => window.open('/cookies', '_blank')}>
+            Política de Cookies
+          </Text>
+        </View>
         <Text style={styles.footerCopy}>© {new Date().getFullYear()} Elastiquality. Todos os direitos reservados.</Text>
       </View>
     </ScrollView>
@@ -347,6 +360,25 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  footerLink: {
+    fontSize: 12,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+    cursor: 'pointer',
+  },
+  footerLinkSeparator: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginHorizontal: 8,
   },
 });
 
