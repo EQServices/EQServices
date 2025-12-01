@@ -1,0 +1,20 @@
+# Exemplo de configuração segura do Git
+# Copie para ~/.gitconfig ou use: git config --global --edit
+
+[user]
+	name = Seu Nome
+	email = seu-email@example.com
+
+[credential]
+	helper = manager-core
+
+[core]
+	autocrlf = true
+	editor = code --wait
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = false
+
