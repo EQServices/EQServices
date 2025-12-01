@@ -15,6 +15,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { TermsOfServiceScreen } from '../screens/TermsOfServiceScreen';
+import { CookiePolicyScreen } from '../screens/CookiePolicyScreen';
 
 // Public Screens
 import { PublicServiceRequestScreen } from '../screens/public/PublicServiceRequestScreen';
@@ -44,6 +45,15 @@ import { CheckoutStatusScreen } from '../screens/professional/CheckoutStatusScre
 import { TransactionHistoryScreen } from '../screens/professional/TransactionHistoryScreen';
 import { ProfileScreen } from '../screens/professional/ProfileScreen';
 import { ProfessionalDashboardScreen } from '../screens/professional/ProfessionalDashboardScreen';
+
+// Shared Screens
+import { HelpScreen } from '../screens/HelpScreen';
+
+// Admin Screens
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
+import { AdminUsersScreen } from '../screens/admin/AdminUsersScreen';
+import { AdminOrdersScreen } from '../screens/admin/AdminOrdersScreen';
+import { AdminCashFlowScreen } from '../screens/admin/AdminCashFlowScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -91,6 +101,11 @@ const AuthStack = () => (
       name="TermsOfService"
       component={TermsOfServiceScreen}
       options={{ title: 'Termos de Uso' }}
+    />
+    <Stack.Screen
+      name="CookiePolicy"
+      component={CookiePolicyScreen}
+      options={{ title: 'Política de Cookies' }}
     />
     <Stack.Screen
       name="PublicServiceRequest"
@@ -161,6 +176,16 @@ const ClientStack = () => (
       name="TermsOfService"
       component={TermsOfServiceScreen}
       options={{ title: 'Termos de Uso' }}
+    />
+    <Stack.Screen
+      name="CookiePolicy"
+      component={CookiePolicyScreen}
+      options={{ title: 'Política de Cookies' }}
+    />
+    <Stack.Screen
+      name="Help"
+      component={HelpScreen}
+      options={{ title: 'Ajuda' }}
     />
   </Stack.Navigator>
 );
@@ -305,6 +330,16 @@ const ProfessionalStack = () => (
       component={TermsOfServiceScreen}
       options={{ title: 'Termos de Uso' }}
     />
+    <Stack.Screen
+      name="CookiePolicy"
+      component={CookiePolicyScreen}
+      options={{ title: 'Política de Cookies' }}
+    />
+    <Stack.Screen
+      name="Help"
+      component={HelpScreen}
+      options={{ title: 'Ajuda' }}
+    />
   </Stack.Navigator>
 );
 
@@ -383,6 +418,21 @@ const AdminStack = () => (
       component={AdminCashFlowScreen}
       options={{ title: 'Fluxo de Caixa' }}
     />
+    <Stack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+      options={{ title: 'Política de Privacidade' }}
+    />
+    <Stack.Screen
+      name="TermsOfService"
+      component={TermsOfServiceScreen}
+      options={{ title: 'Termos de Uso' }}
+    />
+    <Stack.Screen
+      name="CookiePolicy"
+      component={CookiePolicyScreen}
+      options={{ title: 'Política de Cookies' }}
+    />
   </Stack.Navigator>
 );
 
@@ -401,6 +451,7 @@ const linking = {
           PublicServiceRequest: 'service/:serviceRequestId',
           PrivacyPolicy: 'privacy',
           TermsOfService: 'terms',
+          CookiePolicy: 'cookies',
         },
       },
       ClientStack: {

@@ -275,6 +275,20 @@ export const SettingsScreen = ({ navigation }: any) => {
         </Card.Content>
       </Card>
 
+      {/* Seção de Ajuda */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Text style={styles.sectionTitle}>Ajuda e Suporte</Text>
+          <List.Item
+            title="Central de Ajuda"
+            description="FAQ, guias e tutoriais"
+            left={(props) => <List.Icon {...props} icon="help-circle" color={colors.primary} />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => navigation.navigate('Help')}
+          />
+        </Card.Content>
+      </Card>
+
       {/* Seção Legal */}
       <Card style={styles.card}>
         <Card.Content>
@@ -297,13 +311,7 @@ export const SettingsScreen = ({ navigation }: any) => {
             title="Política de Cookies"
             description="Como usamos cookies e tecnologias similares"
             left={(props) => <List.Icon {...props} icon="cookie" />}
-            onPress={() => {
-              if (Platform.OS === 'web') {
-                window.open('/cookies', '_blank');
-              } else {
-                Alert.alert('Política de Cookies', 'Acesse a política de cookies através do nosso site: https://dainty-gnome-5cbd33.netlify.app/cookies');
-              }
-            }}
+            onPress={() => navigation.navigate('CookiePolicy')}
           />
         </Card.Content>
       </Card>

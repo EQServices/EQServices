@@ -163,7 +163,7 @@ export const ClientHomeScreen = ({ navigation }: any) => {
       <View style={styles.header}>
         <View style={styles.headerTopBar}>
           <View style={styles.logoWrapper}>
-            <AppLogo size={120} withBackground />
+            <AppLogo size={150} withBackground />
           </View>
           <IconButton
             icon="logout"
@@ -192,6 +192,15 @@ export const ClientHomeScreen = ({ navigation }: any) => {
             style={styles.headerButton}
           >
             Ver dashboard
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('Help')}
+            textColor={colors.textLight}
+            style={styles.headerButton}
+            icon="help-circle"
+          >
+            Ajuda
           </Button>
           <Button
             mode="outlined"
@@ -273,6 +282,7 @@ const styles = StyleSheet.create({
   logoWrapper: {
     alignItems: 'flex-start',
     flex: 1,
+    maxWidth: '100%',
   },
   headerTop: {
     flexDirection: 'row',

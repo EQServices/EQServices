@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Image } from 'react-native';
+import { ScrollView, StyleSheet, View, Image, Linking, Platform } from 'react-native';
 import { Button, Card, Text, useTheme } from 'react-native-paper';
 import { colors } from '../../theme/colors';
 
@@ -27,6 +27,31 @@ const PRO_STEPS = [
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   const theme = useTheme();
+
+  const handleOpenPolicy = (path: string) => {
+    if (Platform.OS === 'web') {
+      // Na web, usar window.location para navegar internamente
+      // Linking.openURL requer URLs absolutas, então usamos window.location
+      if (typeof window !== 'undefined') {
+        window.location.href = path;
+      }
+    } else {
+      // No mobile, primeiro fazer o usuário entrar no app
+      // As políticas estarão disponíveis através do AuthStack após entrar
+      onEnterApp();
+      
+      // Tentar usar deep linking após um pequeno delay para garantir
+      // que a navegação está pronta
+      setTimeout(() => {
+        const baseUrl = 'https://elastiquality.pt';
+        Linking.openURL(`${baseUrl}${path}`).catch(() => {
+          // Se o deep linking falhar, o usuário já entrou no app
+          // e pode acessar as políticas através do menu de configurações
+          console.log('Deep linking não disponível. Políticas disponíveis após entrar no app.');
+        });
+      }, 1000);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -162,15 +187,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
         <Text style={styles.footerText}>Marketplace português que conecta clientes a profissionais locais.</Text>
         <Text style={styles.footerText}>Suporte: suporte@elastiquality.pt</Text>
         <View style={styles.footerLinks}>
-          <Text style={styles.footerLink} onPress={() => window.open('/privacy', '_blank')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/privacy')}>
             Política de Privacidade
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
-          <Text style={styles.footerLink} onPress={() => window.open('/terms', '_blank')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/terms')}>
             Termos de Uso
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
-          <Text style={styles.footerLink} onPress={() => window.open('/cookies', '_blank')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/cookies')}>
             Política de Cookies
           </Text>
         </View>

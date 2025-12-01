@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Card, Chip, Button, Avatar } from 'react-native-paper';
+import { View, StyleSheet, FlatList, RefreshControl, Platform, Alert } from 'react-native';
+import { Text, Card, Chip, Button, Avatar, IconButton } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { Lead, Professional } from '../../types';
@@ -8,12 +8,52 @@ import { supabase } from '../../config/supabase';
 import { AppLogo } from '../../components/AppLogo';
 import { SkeletonCardList } from '../../components/SkeletonCard';
 import { withCache, CacheStrategy } from '../../services/offlineCache';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
+
+const CONFIRM_LOGOUT_MESSAGE =
+  'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
 
 export const ProfessionalHomeScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
+  const { signOut } = useAuth();
   const [professional, setProfessional] = useState<Professional | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Na web, usar confirm do navegador
+      const confirmed = (globalThis as any).window?.confirm(CONFIRM_LOGOUT_MESSAGE);
+      if (!confirmed) return;
+      await performLogout();
+    } else {
+      // No mobile, usar Alert
+      Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Terminar sessão',
+          style: 'destructive',
+          onPress: async () => {
+            await performLogout();
+          },
+        },
+      ]);
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Erro ao terminar sessão:', err);
+      const errorMessage = 'Não foi possível terminar a sessão. Tente novamente.';
+      if (Platform.OS === 'web') {
+        (globalThis as any).window?.alert(errorMessage);
+      } else {
+        Alert.alert('Erro', errorMessage);
+      }
+    }
+  };
 
   const mapLead = useCallback((row: any): Lead => {
     return {
@@ -105,6 +145,11 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
     loadLeads();
   }, [loadLeads, loadProfessionalData]);
 
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
+
   const handleUnlockLead = async (lead: Lead) => {
     if (!professional || professional.credits < lead.cost) {
       alert('Créditos insuficientes. Compre mais créditos para desbloquear este lead.');
@@ -162,9 +207,17 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.logoWrapper}>
-          <AppLogo size={60} />
-          <Text style={styles.logoTagline}>Elastiquality Pro</Text>
+        <View style={styles.headerTopBar}>
+          <View style={styles.logoWrapper}>
+            <AppLogo size={150} withBackground />
+          </View>
+          <IconButton
+            icon="logout"
+            iconColor={colors.textLight}
+            size={24}
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          />
         </View>
         <View style={styles.headerTop}>
           {professional?.avatarUrl ? (
@@ -185,6 +238,15 @@ export const ProfessionalHomeScreen = ({ navigation }: any) => {
             textColor={colors.textLight}
           >
             Ver dashboard
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('Help')}
+            style={styles.headerButton}
+            textColor={colors.textLight}
+            icon="help-circle"
+          >
+            Ajuda
           </Button>
           <Button
             mode="outlined"
@@ -259,15 +321,25 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: colors.professional,
   },
-  logoWrapper: {
+  headerTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
+  },
+  logoWrapper: {
+    alignItems: 'flex-start',
+    flex: 1,
+    maxWidth: '100%',
   },
   logoTagline: {
     color: colors.textLight,
     fontWeight: '600',
     marginTop: 4,
     letterSpacing: 0.4,
+  },
+  logoutButton: {
+    margin: 0,
   },
   headerTop: {
     flexDirection: 'row',

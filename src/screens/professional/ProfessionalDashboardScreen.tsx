@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
 import { MetricBar } from '../../components/Charts';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
+import { AppLogo } from '../../components/AppLogo';
 
 interface TransactionSummary {
   id: string;
@@ -30,7 +32,7 @@ interface ProposalSummary {
 }
 
 export const ProfessionalDashboardScreen: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState(0);
   const [leadsUnlocked, setLeadsUnlocked] = useState<LeadSummary[]>([]);
@@ -154,6 +156,11 @@ export const ProfessionalDashboardScreen: React.FC = () => {
     fetchData();
   }, [user?.id]);
 
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -165,6 +172,9 @@ export const ProfessionalDashboardScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.logoContainer}>
+        <AppLogo size={150} withBackground />
+      </View>
       <View style={styles.metricsRow}>
         <Card style={styles.metricCard}>
           <Card.Content>
@@ -273,6 +283,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     backgroundColor: colors.background,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    maxWidth: '100%',
   },
   loaderContainer: {
     flex: 1,

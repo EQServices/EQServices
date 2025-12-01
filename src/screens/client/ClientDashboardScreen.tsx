@@ -6,6 +6,7 @@ import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
 import { MetricBar } from '../../components/Charts';
 import { useNavigation } from '@react-navigation/native';
+import { AppLogo } from '../../components/AppLogo';
 
 interface RequestResume {
   id: string;
@@ -145,6 +146,9 @@ export const ClientDashboardScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.logoContainer}>
+        <AppLogo size={150} withBackground />
+      </View>
       <View style={styles.metricsRow}>
         <Card style={styles.metricCard}>
           <Card.Content>
@@ -284,6 +288,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     backgroundColor: colors.background,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    maxWidth: '100%',
   },
   loaderContainer: {
     flex: 1,

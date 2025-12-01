@@ -7,16 +7,14 @@ import { CreditPackage } from '../../types';
 import { supabase } from '../../config/supabase';
 import { startCheckout } from '../../services/stripe';
 import * as Linking from 'expo-linking';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
+import { AppLogo } from '../../components/AppLogo';
 
 export const BuyCreditsScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadPackages();
-  }, []);
 
   const loadPackages = async () => {
     try {
@@ -34,6 +32,15 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadPackages();
+  }, []);
+
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
 
   const buildReturnUrl = (path: string) => {
     if (Platform.OS === 'web') {
@@ -136,6 +143,9 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.logoContainer}>
+        <AppLogo size={150} withBackground />
+      </View>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Comprar Créditos</Text>
         <Text style={styles.headerSubtitle}>
@@ -193,8 +203,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  logoContainer: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: colors.professional,
+    maxWidth: '100%',
+  },
   header: {
     padding: 20,
+    paddingTop: 8,
     backgroundColor: colors.professional,
   },
   headerTitle: {
