@@ -16,6 +16,7 @@ export interface User {
   longitude?: number | null;
   avatarUrl?: string | null;
   createdAt: string;
+  isAdmin?: boolean;
 }
 
 export interface Client extends User {

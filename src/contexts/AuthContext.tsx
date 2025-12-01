@@ -69,46 +69,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserData = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select(
-          `
-            id,
-            email,
-            name,
-            first_name,
-            last_name,
-            phone,
-            user_type,
-            district_id,
-            municipality_id,
-            parish_id,
-            location_label,
-            avatar_url,
-            created_at
-          `,
-        )
-        .eq('id', userId)
-        .single();
+               const { data, error } = await supabase
+                 .from('users')
+                 .select(
+                   `
+                     id,
+                     email,
+                     name,
+                     first_name,
+                     last_name,
+                     phone,
+                     user_type,
+                     district_id,
+                     municipality_id,
+                     parish_id,
+                     location_label,
+                     avatar_url,
+                     created_at,
+                     is_admin
+                   `,
+                 )
+                 .eq('id', userId)
+                 .single();
 
       if (error) throw error;
 
-      if (data) {
-        const mappedUser: User = {
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          firstName: data.first_name ?? undefined,
-          lastName: data.last_name ?? undefined,
-          phone: data.phone ?? undefined,
-          userType: data.user_type,
-          districtId: data.district_id ?? null,
-          municipalityId: data.municipality_id ?? null,
-          parishId: data.parish_id ?? null,
-          locationLabel: data.location_label ?? null,
-          avatarUrl: data.avatar_url ?? null,
-          createdAt: data.created_at,
-        };
+               if (data) {
+                 const mappedUser: User = {
+                   id: data.id,
+                   email: data.email,
+                   name: data.name,
+                   firstName: data.first_name ?? undefined,
+                   lastName: data.last_name ?? undefined,
+                   phone: data.phone ?? undefined,
+                   userType: data.user_type,
+                   districtId: data.district_id ?? null,
+                   municipalityId: data.municipality_id ?? null,
+                   parishId: data.parish_id ?? null,
+                   locationLabel: data.location_label ?? null,
+                   avatarUrl: data.avatar_url ?? null,
+                   createdAt: data.created_at,
+                   isAdmin: data.is_admin ?? false,
+                 };
 
         setUser(mappedUser);
       } else {
@@ -128,6 +130,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) throw error;
+
+    // Após login bem-sucedido, verificar se o userType está correto no banco
+    // Isso garante que o tipo de usuário não foi alterado manualmente
+    const { data: session } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_type')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userData && userData.user_type !== 'client' && userData.user_type !== 'professional') {
+        console.error('Tipo de usuário inválido no banco de dados:', userData.user_type);
+        await supabase.auth.signOut();
+        throw new Error('Erro ao carregar perfil. Entre em contato com o suporte.');
+      }
+    }
   };
 
   const signUp = async ({
@@ -141,12 +160,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     professionalCategories,
     professionalRegions,
   }: SignUpInput) => {
+    // Verificar se o email já existe antes de tentar criar a conta
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, email, user_type')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existingUser) {
+      throw new Error(
+        `Este email já está registrado como ${existingUser.user_type === 'client' ? 'cliente' : 'profissional'}. Use outro email ou faça login.`,
+      );
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      // Se o erro for de email já existente, fornecer mensagem mais clara
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        throw new Error('Este email já está registrado. Use outro email ou faça login.');
+      }
+      throw error;
+    }
 
     if (data.user) {
       const now = new Date().toISOString();

@@ -354,6 +354,38 @@ const ProfessionalTabs = () => (
   </Tab.Navigator>
 );
 
+const AdminStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: { backgroundColor: colors.accent },
+      headerTintColor: colors.textLight,
+      headerTitleAlign: 'center' as const,
+      contentStyle: { backgroundColor: colors.background },
+    }}
+  >
+    <Stack.Screen
+      name="AdminDashboard"
+      component={AdminDashboardScreen}
+      options={{ title: 'Dashboard Admin' }}
+    />
+    <Stack.Screen
+      name="AdminUsers"
+      component={AdminUsersScreen}
+      options={{ title: 'Usuários' }}
+    />
+    <Stack.Screen
+      name="AdminOrders"
+      component={AdminOrdersScreen}
+      options={{ title: 'Pedidos' }}
+    />
+    <Stack.Screen
+      name="AdminCashFlow"
+      component={AdminCashFlowScreen}
+      options={{ title: 'Fluxo de Caixa' }}
+    />
+  </Stack.Navigator>
+);
+
 const linking = {
   prefixes: [
     'elastiquality://',
@@ -453,6 +485,8 @@ export const AppNavigator = () => {
     <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
       {!user ? (
         <AuthStack />
+      ) : user.isAdmin ? (
+        <AdminStack />
       ) : user.userType === 'client' ? (
         <ClientTabs />
       ) : user.userType === 'professional' ? (
