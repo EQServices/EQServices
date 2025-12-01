@@ -74,8 +74,12 @@ jest.mock('expo-linking', () => ({
 
 jest.mock('react-native', () => {
   const RN = jest.requireActual('react-native');
-  RN.Alert.alert = jest.fn();
-  RN.Platform.OS = 'ios';
+  if (RN && RN.Alert) {
+    RN.Alert.alert = jest.fn();
+  }
+  if (RN && RN.Platform) {
+    RN.Platform.OS = 'ios';
+  }
   return RN;
 });
 

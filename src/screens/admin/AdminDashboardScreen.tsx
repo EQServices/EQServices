@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { Text, Card, ActivityIndicator, Chip, Button, DataTable } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform, Alert } from 'react-native';
+import { Text, Card, ActivityIndicator, Chip, Button, DataTable, IconButton } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
 import { AppLogo } from '../../components/AppLogo';
+
+const CONFIRM_LOGOUT_MESSAGE =
+  'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
 
 interface AdminStats {
   total_clientes: number;
@@ -28,7 +31,7 @@ interface CashFlow {
 }
 
 export const AdminDashboardScreen = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +77,41 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
     await fetchData();
   };
 
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Na web, usar confirm do navegador
+      const confirmed = (globalThis as any).window?.confirm(CONFIRM_LOGOUT_MESSAGE);
+      if (!confirmed) return;
+      await performLogout();
+    } else {
+      // No mobile, usar Alert
+      Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Terminar sessão',
+          style: 'destructive',
+          onPress: async () => {
+            await performLogout();
+          },
+        },
+      ]);
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Erro ao terminar sessão:', err);
+      const errorMessage = 'Não foi possível terminar a sessão. Tente novamente.';
+      if (Platform.OS === 'web') {
+        (globalThis as any).window?.alert(errorMessage);
+      } else {
+        Alert.alert('Erro', errorMessage);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -89,7 +127,16 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
     >
       <View style={styles.header}>
-        <AppLogo size={200} withBackground />
+        <View style={styles.headerTopBar}>
+          <AppLogo size={200} withBackground />
+          <IconButton
+            icon="logout"
+            iconColor={colors.textLight}
+            size={24}
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          />
+        </View>
         <Text style={styles.title}>Dashboard Administrativo</Text>
       </View>
 
@@ -194,11 +241,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  headerTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    position: 'relative',
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
     marginTop: 16,
+  },
+  logoutButton: {
+    position: 'absolute',
+    right: 0,
+    margin: 0,
   },
   card: {
     marginBottom: 16,

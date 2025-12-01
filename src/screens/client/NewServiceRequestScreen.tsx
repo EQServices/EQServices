@@ -13,6 +13,7 @@ import { notifyLeadAvailable } from '../../services/notifications';
 import { Coordinates } from '../../services/geolocation';
 import { queueActionIfOffline } from '../../components/AppWithOffline';
 import { isOnline } from '../../services/network';
+import { AppLogo } from '../../components/AppLogo';
 
 export const NewServiceRequestScreen = ({ navigation }: any) => {
   const { user } = useAuth();
@@ -181,6 +182,9 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.logoContainer}>
+          <AppLogo size={200} withBackground />
+        </View>
         <Card style={styles.card}>
           <Card.Content>
             <Text style={styles.cardTitle}>Novo Pedido de Serviço</Text>
@@ -301,6 +305,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   card: {
     elevation: 2,

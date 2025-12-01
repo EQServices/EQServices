@@ -91,14 +91,29 @@ export const useDeepLinking = (navigation: DeepLinkNavigation, isAuthenticated: 
       initialUrlProcessed.current = true;
 
       try {
-        const initialUrl = await LinkingExpo.getInitialURLAsync();
-        if (initialUrl) {
-          const parsed = parseDeepLink(initialUrl);
-          if (parsed) {
-            // Aguardar um pouco para garantir que navegação está pronta
-            setTimeout(() => {
-              handleDeepLink(parsed);
-            }, 1000);
+        // getInitialURLAsync não está disponível no web
+        if (Platform.OS === 'web') {
+          // No web, usar window.location
+          if (typeof window !== 'undefined' && window.location.href) {
+            const parsed = parseDeepLink(window.location.href);
+            if (parsed) {
+              setTimeout(() => {
+                handleDeepLink(parsed);
+              }, 1000);
+            }
+          }
+        } else {
+          // Mobile: usar expo-linking
+          if (LinkingExpo.getInitialURLAsync) {
+            const initialUrl = await LinkingExpo.getInitialURLAsync();
+            if (initialUrl) {
+              const parsed = parseDeepLink(initialUrl);
+              if (parsed) {
+                setTimeout(() => {
+                  handleDeepLink(parsed);
+                }, 1000);
+              }
+            }
           }
         }
       } catch (error) {

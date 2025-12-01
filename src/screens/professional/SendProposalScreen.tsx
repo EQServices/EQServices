@@ -4,6 +4,8 @@ import { Button, Card, Text, TextInput } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
+import { notifyProposalSubmitted } from '../../services/notifications';
 
 interface SendProposalScreenProps {
   navigation: any;
@@ -16,7 +18,7 @@ interface SendProposalScreenProps {
 }
 
 export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigation, route }) => {
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
   const { leadId, serviceRequestId } = route.params;
 
   const [price, setPrice] = useState('');
@@ -88,6 +90,11 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
       setLoading(false);
     }
   };
+
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
 
   return (
     <KeyboardAvoidingView

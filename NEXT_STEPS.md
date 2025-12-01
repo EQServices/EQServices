@@ -20,10 +20,10 @@
 - [x] Sistema de webhooks para confirmação de pagamento
 - [x] Histórico de transações
 
-**Arquivos a criar:**
-- `src/services/stripe.ts`
-- `src/screens/professional/CheckoutScreen.tsx`
-- `src/screens/professional/TransactionHistoryScreen.tsx`
+**Arquivos criados:**
+- `src/services/stripe.ts` ✅
+- `src/screens/professional/BuyCreditsScreen.tsx` ✅ (checkout integrado)
+- `src/screens/professional/TransactionHistoryScreen.tsx` ✅
 
 ### 2. Sistema de Avaliações
 - [x] Tela de avaliação após serviço
@@ -31,10 +31,10 @@
 - [x] Cálculo de rating médio
 - [x] Filtrar profissionais por avaliação
 
-**Arquivos a criar:**
-- `src/screens/client/ReviewScreen.tsx`
-- `src/screens/professional/ProfileScreen.tsx`
-- `src/components/RatingStars.tsx`
+**Arquivos criados:**
+- `src/screens/client/ReviewScreen.tsx` ✅
+- `src/screens/professional/ProfileScreen.tsx` ✅
+- `src/components/RatingStars.tsx` ✅
 
 ### 3. Chat/Mensagens
 - [x] Sistema de chat em tempo real
@@ -42,10 +42,10 @@
 - [x] Histórico de conversas
 - [x] Envio de fotos no chat
 
-**Arquivos a criar:**
-- `src/screens/ChatScreen.tsx`
-- `src/screens/ChatListScreen.tsx`
-- `src/services/chat.ts`
+**Arquivos criados:**
+- `src/screens/chat/ChatConversationScreen.tsx` ✅
+- `src/screens/chat/ChatListScreen.tsx` ✅
+- `src/services/chat.ts` ✅
 
 ### 4. Detalhes de Pedidos e Propostas
 - [x] Tela de detalhes do pedido (cliente)
@@ -54,10 +54,10 @@
 - [x] Aceitar/rejeitar proposta
 - [x] Marcar serviço como concluído
 
-**Arquivos a criar:**
-- `src/screens/client/ServiceRequestDetailScreen.tsx`
-- `src/screens/professional/LeadDetailScreen.tsx`
-- `src/screens/professional/SendProposalScreen.tsx`
+**Arquivos criados:**
+- `src/screens/client/ServiceRequestDetailScreen.tsx` ✅
+- `src/screens/professional/LeadDetailScreen.tsx` ✅
+- `src/screens/professional/SendProposalScreen.tsx` ✅
 
 ### 5. Upload de Fotos
 - [x] Upload de fotos ao criar pedido
@@ -65,10 +65,10 @@
 - [x] Portfolio do profissional
 - [x] Compressão de imagens
 
-**Arquivos a criar:**
-- `src/services/storage.ts`
-- `src/components/ImagePicker.tsx`
-- `src/components/ImageGallery.tsx`
+**Arquivos criados:**
+- `src/services/storage.ts` ✅
+- `src/components/ImagePicker.tsx` ✅
+- `src/components/ImageGallery.tsx` ✅
 
 ### 6. Notificações Push
 - [x] Configurar Firebase Cloud Messaging
@@ -97,69 +97,71 @@
 - `src/navigation/AppNavigator.tsx`
 
 ### 8. Dashboard e Estatísticas
-- [ ] Dashboard do profissional (leads, conversões, gastos)
-- [ ] Histórico de pedidos do cliente
-- [ ] Gráficos e métricas
+- [x] Dashboard do profissional (leads, conversões, gastos)
+- [x] Histórico de pedidos do cliente
+- [x] Gráficos e métricas
 - [ ] Exportar relatórios
 
-**Arquivos a criar:**
-- `src/screens/professional/DashboardScreen.tsx`
+**Arquivos criados:**
+- `src/screens/professional/ProfessionalDashboardScreen.tsx`
 - `src/screens/client/OrderHistoryScreen.tsx`
 - `src/components/Charts.tsx`
 
 ## 🎨 Melhorias de UI/UX
 
 ### Design
-- [ ] Adicionar logo nas telas
-- [ ] Criar splash screen personalizada
+- [x] Adicionar logo nas telas
+- [x] Criar splash screen personalizada
 - [ ] Animações de transição
-- [ ] Skeleton loaders
+- [x] Skeleton loaders
 - [ ] Estados vazios mais atrativos
 - [ ] Dark mode
 
 ### Componentes Reutilizáveis
-- [ ] Botões personalizados
-- [ ] Cards padronizados
-- [ ] Inputs com validação visual
+- [x] Botões personalizados
+- [x] Cards padronizados
+- [x] Inputs com validação visual
 - [ ] Modals
-- [ ] Toasts/Snackbars
+- [x] Toasts/Snackbars
 
-**Arquivos a criar:**
+**Arquivos criados:**
 - `src/components/Button.tsx`
 - `src/components/Card.tsx`
 - `src/components/Input.tsx`
-- `src/components/Modal.tsx`
+- `src/components/Toast.tsx`
+- `src/components/SkeletonCard.tsx`
+- `src/components/AppLogo.tsx`
 
 ## 🔒 Segurança e Validação
 
-- [ ] Validação de formulários com Yup/Zod
-- [ ] Sanitização de inputs
-- [ ] Rate limiting
+- [x] Validação de formulários com Yup/Zod
+- [x] Sanitização de inputs
+- [x] Rate limiting
 - [ ] Verificação de email
 - [ ] Verificação de telefone (SMS)
-- [ ] Política de privacidade e termos de uso
+- [x] Política de privacidade e termos de uso
 
 ## 📱 Funcionalidades Mobile
 
-- [ ] Geolocalização para sugerir profissionais próximos
-- [ ] Compartilhar pedido
-- [ ] Deep linking
-- [ ] Biometria para login
-- [ ] Modo offline básico
+- [x] Geolocalização para sugerir profissionais próximos
+- [x] Compartilhar pedido
+- [x] Deep linking
+- [x] Biometria para login
+- [x] Modo offline básico
 
 ## 🧪 Testes
 
-- [ ] Testes unitários (Jest)
-- [ ] Testes de integração
-- [ ] Testes E2E (Detox)
-- [ ] Testes de performance
+- [x] Testes unitários (Jest)
+- [x] Testes de integração
+- [x] Testes E2E (Detox)
+- [x] Testes de performance
 
 ## 📊 Analytics e Monitoramento
 
-- [ ] Google Analytics / Firebase Analytics
-- [ ] Sentry para error tracking
-- [ ] Logs estruturados
-- [ ] Métricas de negócio
+- [x] Google Analytics / Firebase Analytics
+- [x] Sentry para error tracking
+- [x] Logs estruturados
+- [x] Métricas de negócio
 
 ## 🚀 Deploy e DevOps
 
@@ -224,11 +226,11 @@ Para lançar uma versão inicial funcional, priorize:
 2. ✅ Criar pedido (cliente)
 3. ✅ Visualizar leads (profissional)
 4. ✅ Comprar créditos
-5. 🚧 Integração de pagamento real
-6. 🚧 Enviar proposta
-7. 🚧 Chat básico
-8. 🚧 Avaliações
-9. 🚧 Notificações push
+5. ✅ Integração de pagamento real
+6. ✅ Enviar proposta
+7. ✅ Chat básico
+8. ✅ Avaliações
+9. ✅ Notificações push
 
 ## 📞 Contato
 

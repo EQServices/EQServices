@@ -39,7 +39,7 @@ export const SplashOverlay: React.FC<SplashOverlayProps> = ({ duration = 1200, o
         style={styles.gradient}
       >
         <View style={styles.content}>
-          <AppLogo size={180} showText />
+          <AppLogo size={200} withBackground showText />
           <Text style={styles.tagline}>Conectando talentos e oportunidades</Text>
         </View>
       </LinearGradient>

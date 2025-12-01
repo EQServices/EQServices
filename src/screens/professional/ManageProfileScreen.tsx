@@ -9,6 +9,7 @@ import { ImagePicker, ImagePickerItem } from '../../components/ImagePicker';
 import { uploadAvatarImage, uploadPortfolioImage } from '../../services/storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePickerLib from 'expo-image-picker';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
 
 const MAX_PORTFOLIO_ITEMS = 10;
 
@@ -16,28 +17,11 @@ const CONFIRM_LOGOUT_MESSAGE =
   'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
 
 export const ManageProfileScreen = ({ navigation }: any) => {
+  const { isValid } = useRequireUserType('professional');
   const { user, updateUserContext, signOut } = useAuth();
-  const handleLogout = () => {
-    Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Terminar sessão',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch (err) {
-            console.error('Erro ao terminar sessão:', err);
-            Alert.alert('Erro', 'Não foi possível terminar a sessão. Tente novamente.');
-          }
-        },
-      },
-    ]);
-  };
-
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [description, setDescription] = useState('');
@@ -76,6 +60,39 @@ export const ManageProfileScreen = ({ navigation }: any) => {
         setNewAvatarUri(null);
         setRemoveAvatar(false);
       }
+      setError(null);
+    } catch (err: any) {
+      console.error('Erro ao carregar perfil profissional:', err);
+      setError(err.message || 'Não foi possível carregar os dados do perfil.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile]),
+  );
+
+  const handleLogout = () => {
+    Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Terminar sessão',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (err) {
+            console.error('Erro ao terminar sessão:', err);
+            Alert.alert('Erro', 'Não foi possível terminar a sessão. Tente novamente.');
+          }
+        },
+      },
+    ]);
+  };
+
   const handleSelectAvatar = async () => {
     const { status } = await ImagePickerLib.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -111,21 +128,6 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       setRemoveAvatar(true);
     }
   };
-
-      setError(null);
-    } catch (err: any) {
-      console.error('Erro ao carregar perfil profissional:', err);
-      setError(err.message || 'Não foi possível carregar os dados do perfil.');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile();
-    }, [loadProfile]),
-  );
 
   const handleSave = async () => {
     if (!user?.id) return;
@@ -199,6 +201,11 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       setSaving(false);
     }
   };
+
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

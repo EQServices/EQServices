@@ -4,9 +4,10 @@ import { ActivityIndicator, Card, List, Text } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { CreditTransaction, listCreditTransactions } from '../../services/stripe';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
 
 export const TransactionHistoryScreen = () => {
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -27,6 +28,11 @@ export const TransactionHistoryScreen = () => {
   useEffect(() => {
     loadTransactions();
   }, [user?.id]);
+
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
 
   const onRefresh = async () => {
     setRefreshing(true);

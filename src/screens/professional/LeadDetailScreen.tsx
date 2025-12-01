@@ -7,6 +7,7 @@ import { supabase } from '../../config/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { ensureConversation } from '../../services/chat';
 import { ImageGallery } from '../../components/ImageGallery';
+import { useRequireUserType } from '../../hooks/useRequireUserType';
 
 interface LeadDetailScreenProps {
   navigation: any;
@@ -45,12 +46,16 @@ const mapServiceRequest = (row: any): ServiceRequest => ({
 
 export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, route }) => {
   const { leadId, serviceRequestId: routeServiceRequestId } = route.params;
-  const { user } = useAuth();
+  const { user, isValid } = useRequireUserType('professional');
   const [lead, setLead] = useState<Lead | null>(null);
   const [serviceRequest, setServiceRequest] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [proposalStatus, setProposalStatus] = useState<string | null>(null);
+
+  const serviceRequestId = routeServiceRequestId || lead?.serviceRequestId || '';
+
   const handleStartChat = async () => {
     if (!lead || !serviceRequest || !user?.id) return;
 
@@ -72,9 +77,6 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
       alert('Não foi possível iniciar a conversa.');
     }
   };
-  const [proposalStatus, setProposalStatus] = useState<string | null>(null);
-
-  const serviceRequestId = routeServiceRequestId || lead?.serviceRequestId || '';
 
   const loadLead = useCallback(async () => {
     try {
@@ -133,6 +135,11 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
   useEffect(() => {
     loadLead();
   }, [loadLead, route.params?.refresh]);
+
+  // Se não for profissional válido, não renderizar conteúdo
+  if (!isValid) {
+    return null;
+  }
 
   const handleSendProposal = () => {
     if (!serviceRequestId) {
