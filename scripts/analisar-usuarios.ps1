@@ -127,6 +127,7 @@ try {
     }
 } catch {
     Write-Host "⚠️ Não foi possível executar via CLI. Use o Supabase Dashboard." -ForegroundColor Yellow
+    Write-Host ""
 }
 
 Write-Host ""
