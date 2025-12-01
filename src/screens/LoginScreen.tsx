@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable, Linking } from 'react-native';
-import { TextInput, Button, Text, Card, useTheme, Checkbox, Divider } from 'react-native-paper';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable, Linking, Alert } from 'react-native';
+import { TextInput, Button, Text, Card, useTheme, Checkbox, Divider, Dialog, Portal } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { AppLogo } from '../components/AppLogo';
 import { useThemedStyles } from '../theme/useThemedStyles';
 import { useBiometry } from '../hooks/useBiometry';
+import { sendPasswordResetEmail } from '../services/emailVerification';
 
 export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -13,6 +14,9 @@ export const LoginScreen = ({ navigation }: any) => {
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const { signIn } = useAuth();
   const theme = useTheme();
   const {
@@ -89,6 +93,15 @@ export const LoginScreen = ({ navigation }: any) => {
       marginHorizontal: 12,
       fontSize: 14,
       color: currentTheme.colors.onSurfaceVariant ?? currentTheme.colors.outline,
+    },
+    forgotPasswordButton: {
+      alignSelf: 'flex-end',
+      marginTop: -8,
+      marginBottom: 8,
+    },
+    forgotPasswordText: {
+      fontSize: 14,
+      color: currentTheme.colors.primary,
     },
   }));
 
@@ -176,6 +189,39 @@ export const LoginScreen = ({ navigation }: any) => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!resetEmail.trim()) {
+      Alert.alert('Erro', 'Por favor, informe seu email');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const result = await sendPasswordResetEmail(resetEmail.trim());
+      if (result.success) {
+        Alert.alert(
+          'Email enviado',
+          'Verifique sua caixa de entrada. Enviamos um link para redefinir sua senha.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowForgotPassword(false);
+                setResetEmail('');
+              },
+            },
+          ],
+        );
+      } else {
+        Alert.alert('Erro', result.error || 'Não foi possível enviar o email de recuperação');
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Erro ao enviar email de recuperação');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -221,6 +267,18 @@ export const LoginScreen = ({ navigation }: any) => {
               secureTextEntry
               style={styles.input}
             />
+
+            <Button
+              mode="text"
+              onPress={() => {
+                setResetEmail(email);
+                setShowForgotPassword(true);
+              }}
+              style={styles.forgotPasswordButton}
+              textColor={theme.colors.primary}
+            >
+              Esqueceu a senha?
+            </Button>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -278,6 +336,32 @@ export const LoginScreen = ({ navigation }: any) => {
             </Button>
           </Card.Content>
         </Card>
+
+        <Portal>
+          <Dialog visible={showForgotPassword} onDismiss={() => setShowForgotPassword(false)}>
+            <Dialog.Title>Recuperar senha</Dialog.Title>
+            <Dialog.Content>
+              <Text style={{ marginBottom: 16 }}>
+                Informe seu email e enviaremos um link para redefinir sua senha.
+              </Text>
+              <TextInput
+                label="Email"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                mode="outlined"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.input}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setShowForgotPassword(false)}>Cancelar</Button>
+              <Button onPress={handleForgotPassword} loading={resetLoading} disabled={resetLoading}>
+                Enviar
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
       </ScrollView>
     </KeyboardAvoidingView>
   );

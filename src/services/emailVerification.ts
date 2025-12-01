@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 
 /**
@@ -40,8 +41,13 @@ export const isEmailVerified = async (): Promise<boolean> => {
  */
 export const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    // Usar a URL base do site para o redirect
+    const baseUrl = Platform.OS === 'web' 
+      ? (globalThis as any).window?.location?.origin || 'https://elastiquality.pt'
+      : 'https://elastiquality.pt';
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${(globalThis as any).window?.location?.origin || ''}/reset-password`,
+      redirectTo: `${baseUrl}/Login`,
     });
 
     if (error) {
