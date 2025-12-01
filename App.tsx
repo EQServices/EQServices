@@ -13,12 +13,32 @@ import { initializeMonitoring } from './src/config/analytics';
 import { useAnalyticsSetup } from './src/hooks/useAnalytics';
 import { logger } from './src/services/logger';
 import { CookieConsentBanner } from './src/components/CookieConsentBanner';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://1f64e493ce8a3698166ea7d0300f05e1@o4510460187705344.ingest.de.sentry.io/4510460190523472',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync().catch(() => {});
 }
 
-export default function App() {
+export default Sentry.wrap(function App() {
   const isWeb = Platform.OS === 'web';
   const [showApp, setShowApp] = useState(!isWeb);
   const [appIsReady, setAppIsReady] = useState(isWeb);
@@ -86,7 +106,7 @@ export default function App() {
       </ToastProvider>
     </ThemeProvider>
   );
-}
+});
 
 function AppContent() {
   useAnalyticsSetup();

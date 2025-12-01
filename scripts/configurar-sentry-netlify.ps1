@@ -45,6 +45,7 @@ try {
     Write-Host "   3. Acesse: https://sentry.io para ver os erros" -ForegroundColor White
     
 } catch {
+    Write-Host ""
     Write-Host "⚠️ Erro ao configurar via CLI. Configure manualmente:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "1. Acesse: https://app.netlify.com/sites/dainty-gnome-5cbd33/settings/deploys#environment-variables" -ForegroundColor White
