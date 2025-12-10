@@ -254,7 +254,7 @@ CREATE POLICY "Clients can create leads for own requests" ON public.leads
     EXISTS (
       SELECT 1
       FROM public.service_requests
-      WHERE service_requests.id = leads.service_request_id
+      WHERE service_requests.id = service_request_id
         AND service_requests.client_id = auth.uid()
     )
   );
