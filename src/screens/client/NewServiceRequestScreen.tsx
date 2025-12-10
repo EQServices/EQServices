@@ -107,21 +107,41 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
 
       if (requestError) throw requestError;
 
-      // Criar lead automaticamente
+      // Criar lead automaticamente usando função RPC para garantir segurança
       const leadCost = calculateLeadCost(category);
-      const { data: leadRecord, error: leadError } = await supabase
-        .from('leads')
-        .insert({
-          service_request_id: serviceRequest.id,
-          category,
-          cost: leadCost,
-          location: locationLabel,
-          description: `${title} - ${description.substring(0, 100)}`,
-        })
-        .select('id')
-        .single();
+      let leadRecord: { id: string } | null = null;
+      
+      const { data: leadId, error: leadError } = await supabase.rpc('create_lead_for_service_request', {
+        p_service_request_id: serviceRequest.id,
+        p_category: category,
+        p_cost: leadCost,
+        p_location: locationLabel,
+        p_description: `${title} - ${description.substring(0, 100)}`,
+      });
 
-      if (leadError) throw leadError;
+      if (leadError) {
+        // Fallback: tentar inserir diretamente se a função não existir
+        const { data: directLeadRecord, error: directInsertError } = await supabase
+          .from('leads')
+          .insert({
+            service_request_id: serviceRequest.id,
+            category,
+            cost: leadCost,
+            location: locationLabel,
+            description: `${title} - ${description.substring(0, 100)}`,
+          })
+          .select('id')
+          .single();
+
+        if (directInsertError) throw directInsertError;
+        leadRecord = directLeadRecord;
+      } else {
+        leadRecord = { id: leadId as string };
+      }
+
+      if (!leadRecord || !leadRecord.id) {
+        throw new Error('Erro ao criar lead: ID não retornado');
+      }
 
       const { data: professionals } = await supabase
         .from('professionals')
@@ -135,7 +155,7 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
               professionalId: professional.id,
               category,
               location: locationLabel,
-              leadId: leadRecord.id,
+              leadId: leadRecord!.id,
               serviceRequestId: serviceRequest.id,
             }),
           ),
