@@ -128,7 +128,9 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
     >
       <View style={styles.header}>
         <View style={styles.headerTopBar}>
-          <AppLogo size={200} withBackground />
+          <View style={styles.logoWrapper}>
+            <AppLogo size={150} withBackground />
+          </View>
           <IconButton
             icon="logout"
             iconColor={colors.textLight}
@@ -244,9 +246,15 @@ const styles = StyleSheet.create({
   headerTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     width: '100%',
     position: 'relative',
+    paddingHorizontal: 8,
+  },
+  logoWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    maxWidth: '100%',
   },
   title: {
     fontSize: 24,
@@ -258,6 +266,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     margin: 0,
+    zIndex: 10,
   },
   card: {
     marginBottom: 16,
