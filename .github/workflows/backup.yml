@@ -1,0 +1,54 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Diariamente às 2h UTC (3h em Portugal no horário de verão)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permitir execução manual
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install Supabase CLI
+        run: |
+          npm install -g supabase
+      
+      - name: Login to Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "$SUPABASE_ACCESS_TOKEN" | supabase login --token -
+      
+      - name: Backup Database
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          mkdir -p backups
+          supabase db dump --project-ref $SUPABASE_PROJECT_REF -f backups/backup_$(date +%Y%m%d_%H%M%S).sql
+      
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-$(date +%Y%m%d)
+          path: backups/*.sql
+          retention-days: 30
+      
+      - name: Upload to GitHub Releases (opcional)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: backups/*.sql
+          tag_name: backup-${{ github.run_number }}
+          name: Database Backup ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

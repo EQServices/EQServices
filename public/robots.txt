@@ -1,0 +1,14 @@
+# robots.txt para Elastiquality
+# https://elastiquality.pt/robots.txt
+
+User-agent: *
+Allow: /
+
+# Não indexar páginas administrativas ou de API
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_expo/
+
+# Sitemap
+Sitemap: https://elastiquality.pt/sitemap.xml
+
