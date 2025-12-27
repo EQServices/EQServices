@@ -48,6 +48,9 @@ import { ProfessionalDashboardScreen } from '../screens/professional/Professiona
 
 // Shared Screens
 import { HelpScreen } from '../screens/HelpScreen';
+import { FAQScreen } from '../screens/FAQScreen';
+import { ClientGuideScreen } from '../screens/ClientGuideScreen';
+import { ProfessionalGuideScreen } from '../screens/ProfessionalGuideScreen';
 
 // Admin Screens
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
@@ -111,6 +114,21 @@ const AuthStack = () => (
       name="PublicServiceRequest"
       component={PublicServiceRequestScreen}
       options={{ title: 'Pedido de Serviço' }}
+    />
+    <Stack.Screen
+      name="FAQ"
+      component={FAQScreen}
+      options={{ title: 'Perguntas Frequentes' }}
+    />
+    <Stack.Screen
+      name="ClientGuide"
+      component={ClientGuideScreen}
+      options={{ title: 'Guia do Cliente' }}
+    />
+    <Stack.Screen
+      name="ProfessionalGuide"
+      component={ProfessionalGuideScreen}
+      options={{ title: 'Guia do Profissional' }}
     />
   </Stack.Navigator>
 );
@@ -186,6 +204,21 @@ const ClientStack = () => (
       name="Help"
       component={HelpScreen}
       options={{ title: 'Ajuda' }}
+    />
+    <Stack.Screen
+      name="FAQ"
+      component={FAQScreen}
+      options={{ title: 'Perguntas Frequentes' }}
+    />
+    <Stack.Screen
+      name="ClientGuide"
+      component={ClientGuideScreen}
+      options={{ title: 'Guia do Cliente' }}
+    />
+    <Stack.Screen
+      name="ProfessionalGuide"
+      component={ProfessionalGuideScreen}
+      options={{ title: 'Guia do Profissional' }}
     />
   </Stack.Navigator>
 );
@@ -339,6 +372,21 @@ const ProfessionalStack = () => (
       name="Help"
       component={HelpScreen}
       options={{ title: 'Ajuda' }}
+    />
+    <Stack.Screen
+      name="FAQ"
+      component={FAQScreen}
+      options={{ title: 'Perguntas Frequentes' }}
+    />
+    <Stack.Screen
+      name="ClientGuide"
+      component={ClientGuideScreen}
+      options={{ title: 'Guia do Cliente' }}
+    />
+    <Stack.Screen
+      name="ProfessionalGuide"
+      component={ProfessionalGuideScreen}
+      options={{ title: 'Guia do Profissional' }}
     />
   </Stack.Navigator>
 );

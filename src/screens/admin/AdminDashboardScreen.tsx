@@ -133,10 +133,11 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
           </View>
           <IconButton
             icon="logout"
-            iconColor={colors.textLight}
-            size={24}
+            iconColor={colors.text}
+            size={28}
             onPress={handleLogout}
             style={styles.logoutButton}
+            containerColor={colors.primaryLight}
           />
         </View>
         <Text style={styles.title}>Dashboard Administrativo</Text>
@@ -245,11 +246,10 @@ const styles = StyleSheet.create({
   },
   headerTopBar: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     width: '100%',
-    position: 'relative',
-    paddingHorizontal: 8,
+    marginBottom: 16,
   },
   logoWrapper: {
     flex: 1,
@@ -263,9 +263,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   logoutButton: {
+    margin: 0,
     position: 'absolute',
     right: 0,
-    margin: 0,
+    top: 0,
     zIndex: 10,
   },
   card: {

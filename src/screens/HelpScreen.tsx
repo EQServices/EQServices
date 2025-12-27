@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, Linking, Platform } from 'react-native';
 import { Text, Card, List, Button, Divider } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { AppLogo } from '../components/AppLogo';
 
 export const HelpScreen: React.FC = () => {
+  const navigation = useNavigation();
   const openLink = async (url: string) => {
     try {
       const canOpen = await Linking.canOpenURL(url);
@@ -52,7 +54,7 @@ export const HelpScreen: React.FC = () => {
             description="Respostas para as dúvidas mais comuns"
             left={props => <List.Icon {...props} icon="help-circle" color={colors.primary} />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/FAQ.md')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
 
@@ -63,7 +65,7 @@ export const HelpScreen: React.FC = () => {
             description="Como criar pedidos e contratar profissionais"
             left={props => <List.Icon {...props} icon="account" color={colors.primary} />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_CLIENTE.md')}
+            onPress={() => navigation.navigate('ClientGuide')}
             style={styles.listItem}
           />
 
@@ -74,7 +76,7 @@ export const HelpScreen: React.FC = () => {
             description="Como conseguir clientes e crescer seu negócio"
             left={props => <List.Icon {...props} icon="briefcase" color={colors.primary} />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_PROFISSIONAL.md')}
+            onPress={() => navigation.navigate('ProfessionalGuide')}
             style={styles.listItem}
           />
         </Card.Content>
@@ -88,7 +90,7 @@ export const HelpScreen: React.FC = () => {
           <List.Item
             title="Como criar um pedido?"
             left={props => <List.Icon {...props} icon="file-document-edit" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_CLIENTE.md#criar-pedido-de-servi%C3%A7o')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
 
@@ -97,7 +99,7 @@ export const HelpScreen: React.FC = () => {
           <List.Item
             title="Como comprar créditos?"
             left={props => <List.Icon {...props} icon="credit-card" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_PROFISSIONAL.md#sistema-de-cr%C3%A9ditos')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
 
@@ -106,7 +108,7 @@ export const HelpScreen: React.FC = () => {
           <List.Item
             title="Como enviar uma proposta?"
             left={props => <List.Icon {...props} icon="send" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_PROFISSIONAL.md#enviar-propostas-vencedoras')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
 
@@ -115,7 +117,7 @@ export const HelpScreen: React.FC = () => {
           <List.Item
             title="Como avaliar um serviço?"
             left={props => <List.Icon {...props} icon="star" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/GUIA_CLIENTE.md#contratar-e-avaliar')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
 
@@ -124,7 +126,7 @@ export const HelpScreen: React.FC = () => {
           <List.Item
             title="Problemas técnicos"
             left={props => <List.Icon {...props} icon="alert-circle" />}
-            onPress={() => openLink('https://github.com/SuporteElastiquality/APP/blob/main/docs/FAQ.md#problemas-t%C3%A9cnicos')}
+            onPress={() => navigation?.navigate('FAQ')}
             style={styles.listItem}
           />
         </Card.Content>

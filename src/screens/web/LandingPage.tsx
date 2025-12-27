@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Image, Linking, Platform } from 'react-native';
+import { ScrollView, StyleSheet, View, Image, Platform, Linking } from 'react-native';
 import { Button, Card, Text, useTheme } from 'react-native-paper';
 import { colors } from '../../theme/colors';
 
@@ -8,9 +8,9 @@ interface LandingPageProps {
 }
 
 const CREDIT_PACKAGES = [
+  { name: 'Pay as you go', credits: 1, price: 1, description: 'Compre moedas conforme a demanda do seu negócio.' },
   { name: 'Pacote Básico', credits: 50, price: 45, description: 'Ideal para começar a captar novos clientes (10% de desconto).' },
   { name: 'Pacote Premium', credits: 100, price: 80, description: 'Melhor custo-benefício com 20% de desconto.' },
-  { name: 'Pay as you go', credits: 1, price: 1, description: 'Compre moedas conforme a demanda do seu negócio.' },
 ];
 
 const CLIENT_STEPS = [
@@ -28,34 +28,37 @@ const PRO_STEPS = [
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   const theme = useTheme();
 
-  const handleOpenPolicy = (path: string) => {
-    if (Platform.OS === 'web') {
-      // Na web, usar window.location para navegar internamente
-      // Linking.openURL requer URLs absolutas, então usamos window.location
-      if (typeof window !== 'undefined') {
-        window.location.href = path;
-      }
-    } else {
-      // No mobile, primeiro fazer o usuário entrar no app
-      // As políticas estarão disponíveis através do AuthStack após entrar
-      onEnterApp();
-      
-      // Tentar usar deep linking após um pequeno delay para garantir
-      // que a navegação está pronta
-      setTimeout(() => {
+  const handleOpenPolicy = (route: string) => {
+    // Entrar no app primeiro
+    onEnterApp();
+    
+    // Após entrar no app, navegar para a rota desejada
+    // Usar um delay para garantir que o AppNavigator está pronto
+    setTimeout(() => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // Na web, usar window.location para navegar
+        // As rotas estão no AuthStack, então podemos navegar diretamente
+        window.location.hash = `#/${route}`;
+        // Forçar reload do hash se necessário
+        if (window.location.hash === `#/${route}`) {
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      } else {
+        // No mobile, tentar usar deep linking
         const baseUrl = 'https://elastiquality.pt';
-        Linking.openURL(`${baseUrl}${path}`).catch(() => {
-          // Se o deep linking falhar, o usuário já entrou no app
-          // e pode acessar as políticas através do menu de configurações
-          console.log('Deep linking não disponível. Políticas disponíveis após entrar no app.');
+        Linking.openURL(`${baseUrl}/${route}`).catch(() => {
+          console.log('Deep linking não disponível.');
         });
-      }, 1000);
-    }
+      }
+    }, 500);
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.heroSection}>
+        <View style={styles.heroImageWrapper}>
+          <Image source={require('../../../assets/images/logo.png')} style={styles.heroImage} resizeMode="contain" />
+        </View>
         <View style={styles.heroText}>
           <Text style={styles.tag}>Marketplace de serviços em Portugal</Text>
           <Text style={styles.title}>Conectamos clientes a profissionais de confiança</Text>
@@ -72,14 +75,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             >
               Sou cliente
             </Button>
-            <Button mode="outlined" onPress={onEnterApp} textColor={colors.primaryDark} style={styles.ctaButton}>
+            <Button
+              mode="contained"
+              onPress={onEnterApp}
+              buttonColor={colors.primary}
+              style={styles.ctaButton}
+            >
               Sou profissional
             </Button>
           </View>
           <Text style={styles.helperText}>Disponível em Web, Android e iOS. É grátis para solicitar orçamentos.</Text>
-        </View>
-        <View style={styles.heroImageWrapper}>
-          <Image source={require('../../../assets/images/logo.png')} style={styles.heroImage} resizeMode="contain" />
         </View>
       </View>
 
@@ -112,7 +117,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Por que escolher o Elastiquality?</Text>
+        <Text style={styles.sectionTitle}>Por que escolher a Elastiquality?</Text>
         <View style={styles.featuresGrid}>
           <Card style={styles.featureCard}>
             <Card.Content>
@@ -162,7 +167,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </Card>
           ))}
         </View>
-        <Text style={styles.helperText}>Moedas expiram em 3 meses. Pagamento por cartão, Apple Pay ou Google Pay.</Text>
+        <Text style={styles.helperText}>Pagamento por cartão, Apple Pay ou Google Pay.</Text>
       </View>
 
       <View style={styles.section}>
@@ -170,7 +175,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
         <Text style={styles.sectionSubtitle}>
           Clientes pedem sem custo. Profissionais desbloqueiam leads e aumentam a agenda de serviços.
         </Text>
-        <View style={styles.ctaRow}>
+        <View style={styles.ctaRowCentered}>
           <Button
             mode="contained"
             onPress={onEnterApp}
@@ -187,15 +192,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
         <Text style={styles.footerText}>Marketplace português que conecta clientes a profissionais locais.</Text>
         <Text style={styles.footerText}>Suporte: suporte@elastiquality.pt</Text>
         <View style={styles.footerLinks}>
-          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/privacy')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/PrivacyPolicy')}>
             Política de Privacidade
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
-          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/terms')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/TermsOfService')}>
             Termos de Uso
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
-          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/cookies')}>
+          <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/CookiePolicy')}>
             Política de Cookies
           </Text>
         </View>
@@ -259,6 +264,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  ctaRowCentered: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ctaButton: {
     borderRadius: 999,

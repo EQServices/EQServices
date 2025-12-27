@@ -160,7 +160,6 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
             <Text style={styles.infoText}>
               • Cada lead tem um custo em moedas{'\n'}
               • O custo varia por categoria e demanda{'\n'}
-              • Créditos expiram em 3 meses{'\n'}
               • Pagamento seguro com cartão ou carteira digital
             </Text>
           </Card.Content>
