@@ -21,8 +21,8 @@ Plataforma portuguesa que conecta clientes a prestadores de serviços locais.
 
 1. Clone o repositório:
 ```bash
-git clone <seu-repositorio>
-cd elastiquality
+git clone https://github.com/EQServices/EQServices.git
+cd EQServices
 ```
 
 2. Instale as dependências:
@@ -191,4 +191,3 @@ src/
 ## 📄 Licença
 
 Propriedade de Elastiquality © 2025
-
