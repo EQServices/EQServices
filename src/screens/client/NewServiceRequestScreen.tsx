@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Card, Menu } from 'react-native-paper';
+import { TextInput, Button, Text, Card, HelperText, Chip } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
-import { ALL_SERVICES, getServiceGroup } from '../../constants/categories';
+import { getServiceGroup } from '../../constants/categories';
 import { LocationPicker } from '../../components/LocationPicker';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import { LocationSelection, formatLocationSelection } from '../../services/locations';
 import { ImagePicker, ImagePickerItem } from '../../components/ImagePicker';
 import { uploadServiceImage } from '../../services/storage';
@@ -16,9 +18,10 @@ import { isOnline } from '../../services/network';
 import { AppLogo } from '../../components/AppLogo';
 
 export const NewServiceRequestScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [locationSelection, setLocationSelection] = useState<LocationSelection>({});
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -26,17 +29,43 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
   const [budget, setBudget] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<ImagePickerItem[]>([]);
+
 
   const handleSubmit = async () => {
     const locationLabel = formatLocationSelection(locationSelection);
+    
+    // Limpar erros anteriores
+    setFieldErrors({});
+    setError('');
+    setLocationError(null);
 
-    if (!title || !category || !description || !locationLabel) {
-      setError('Por favor, preencha todos os campos obrigatórios');
-      if (!locationLabel) {
-        setLocationError('Selecione a localização através do autocomplete.');
-      }
+    // Validar campos obrigatórios e identificar quais estão faltando
+    const missingFields: string[] = [];
+    const newFieldErrors: Record<string, string> = {};
+
+    if (!title.trim()) {
+      missingFields.push(t('client.newRequest.serviceTitle'));
+      newFieldErrors.title = t('client.newRequest.requiredField');
+    }
+    if (categories.length === 0) {
+      missingFields.push(t('client.newRequest.category'));
+      newFieldErrors.category = t('client.newRequest.selectCategory');
+    }
+    if (!description.trim()) {
+      missingFields.push(t('client.newRequest.description'));
+      newFieldErrors.description = t('client.newRequest.requiredField');
+    }
+    if (!locationLabel) {
+      missingFields.push(t('client.newRequest.location'));
+      setLocationError(t('client.newRequest.selectLocation'));
+      newFieldErrors.location = t('client.newRequest.requiredField');
+    }
+
+    if (missingFields.length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError(t('client.newRequest.fillFields', { fields: missingFields.join(', ') }));
       return;
     }
 
@@ -48,7 +77,7 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
       const uploadedPhotos: string[] = [];
       if (photos.length > 0) {
         if (!user?.id) {
-          throw new Error('Sessão inválida. Faça login novamente.');
+          throw new Error(t('client.newRequest.invalidSession'));
         }
 
         for (const photo of photos) {
@@ -66,7 +95,7 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
           {
             client_id: user.id,
             title,
-            category,
+            categories,
             description,
             location: locationLabel,
             latitude: coordinates?.latitude ?? null,
@@ -78,22 +107,27 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
           2, // Alta prioridade
         );
 
-        alert('Pedido criado offline. Será sincronizado quando a conexão for restabelecida.');
+        alert(t('client.newRequest.createdOffline'));
+        setTitle('');
         setLocationSelection({});
         setLocationError(null);
         setCoordinates(null);
         setPhotos([]);
-        navigation.goBack();
+        setCategories([]);
+        setDescription('');
+        setBudget('');
+        // Redirecionar para a tela de perfil/home do cliente
+        navigation.navigate('ClientHome');
         return;
       }
 
-      // Criar pedido de serviço
+      // Criar pedido de serviço com múltiplas categorias
       const { data: serviceRequest, error: requestError } = await supabase
         .from('service_requests')
         .insert({
           client_id: user?.id,
           title,
-          category,
+          categories, // Array de categorias
           description,
           location: locationLabel,
           latitude: coordinates?.latitude ?? null,
@@ -107,67 +141,90 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
 
       if (requestError) throw requestError;
 
-      // Criar lead automaticamente usando função RPC para garantir segurança
-      const leadCost = calculateLeadCost(category);
-      let leadRecord: { id: string } | null = null;
-      
-      const { data: leadId, error: leadError } = await supabase.rpc('create_lead_for_service_request', {
-        p_service_request_id: serviceRequest.id,
-        p_category: category,
-        p_cost: leadCost,
-        p_location: locationLabel,
-        p_description: `${title} - ${description.substring(0, 100)}`,
-      });
+      // Criar um lead para cada categoria selecionada
+      const createdLeads: { id: string; category: string }[] = [];
 
-      if (leadError) {
-        // Fallback: tentar inserir diretamente se a função não existir
-        const { data: directLeadRecord, error: directInsertError } = await supabase
-          .from('leads')
-          .insert({
-            service_request_id: serviceRequest.id,
-            category,
-            cost: leadCost,
-            location: locationLabel,
-            description: `${title} - ${description.substring(0, 100)}`,
-          })
-          .select('id')
-          .single();
+      for (const cat of categories) {
+        const leadCost = calculateLeadCost(cat);
+        
+        // Tentar usar função RPC primeiro
+        const { data: leadId, error: leadError } = await supabase.rpc('create_lead_for_service_request', {
+          p_service_request_id: serviceRequest.id,
+          p_category: cat,
+          p_cost: leadCost,
+          p_location: locationLabel,
+          p_description: `${title} - ${description.substring(0, 100)}`,
+        });
 
-        if (directInsertError) throw directInsertError;
-        leadRecord = directLeadRecord;
-      } else {
-        leadRecord = { id: leadId as string };
-      }
+        let leadRecordId: string | null = null;
 
-      if (!leadRecord || !leadRecord.id) {
-        throw new Error('Erro ao criar lead: ID não retornado');
-      }
-
-      const { data: professionals } = await supabase
-        .from('professionals')
-        .select('id, categories')
-        .contains('categories', [category]);
-
-      if (professionals && professionals.length > 0) {
-        await Promise.all(
-          professionals.map((professional) =>
-            notifyLeadAvailable({
-              professionalId: professional.id,
-              category,
+        if (leadError) {
+          // Fallback: inserir diretamente se a função não existir
+          const { data: directLeadRecord, error: directInsertError } = await supabase
+            .from('leads')
+            .insert({
+              service_request_id: serviceRequest.id,
+              category: cat,
+              cost: leadCost,
               location: locationLabel,
-              leadId: leadRecord!.id,
-              serviceRequestId: serviceRequest.id,
-            }),
-          ),
-        );
+              description: `${title} - ${description.substring(0, 100)}`,
+            })
+            .select('id')
+            .single();
+
+          if (directInsertError) {
+            console.error(`Erro ao criar lead para categoria ${cat}:`, directInsertError);
+            continue; // Continuar com próxima categoria mesmo se uma falhar
+          }
+          leadRecordId = directLeadRecord?.id || null;
+        } else {
+          leadRecordId = leadId as string;
+        }
+
+        if (leadRecordId) {
+          createdLeads.push({ id: leadRecordId, category: cat });
+
+          // Notificar profissionais desta categoria
+          const { data: professionals } = await supabase
+            .from('professionals')
+            .select('id, categories')
+            .contains('categories', [cat]);
+
+          if (professionals && professionals.length > 0) {
+            await Promise.all(
+              professionals.map((professional) =>
+                notifyLeadAvailable({
+                  professionalId: professional.id,
+                  category: cat,
+                  location: locationLabel,
+                  leadId: leadRecordId!,
+                  serviceRequestId: serviceRequest.id,
+                }),
+              ),
+            );
+          }
+        }
       }
 
-      alert('Pedido criado com sucesso! Aguarde propostas dos profissionais.');
+      if (createdLeads.length === 0) {
+        throw new Error('Erro ao criar leads. Nenhum lead foi criado.');
+      }
+
+      // Limpar formulário
+      setTitle('');
       setLocationSelection({});
       setLocationError(null);
       setCoordinates(null);
       setPhotos([]);
-      navigation.goBack();
+      setCategories([]);
+      setDescription('');
+      setBudget('');
+      
+      // Mostrar mensagem de sucesso e redirecionar para a tela inicial do cliente
+      alert(t('client.newRequest.success') + ` ${createdLeads.length} ${t('client.newRequest.opportunitiesCreated')}`);
+      
+      // Redirecionar para a tela de perfil/home do cliente
+      navigation.navigate('ClientHome');
     } catch (err: any) {
       setError(err.message || 'Erro ao criar pedido');
     } finally {
@@ -178,22 +235,22 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
   const calculateLeadCost = (service: string): number => {
     const group = getServiceGroup(service);
     const baseByGroup: Record<string, number> = {
-      'Serviços de Construção e Remodelação': 45,
-      'Serviços Domésticos': 12,
-      'Serviços de Limpeza': 14,
-      'Serviços de Tecnologia e Informática': 25,
-      'Serviço Automóvel': 30,
-      'Beleza e Estética': 18,
-      'Serviços de Saúde e Bem-Estar': 28,
-      'Serviços de Transporte e Logística': 35,
-      Educação: 15,
-      'Eventos e Festas': 32,
-      'Serviços Administrativos e Financeiros': 40,
-      'Serviços Criativos e Design': 30,
-      'Serviços de Costura/Alfaiataria/Modista': 16,
+      'Serviços de Construção e Remodelação': 10, // Máximo: 10 moedas
+      'Serviços Administrativos e Financeiros': 9,
+      'Serviços de Transporte e Logística': 8,
+      'Eventos e Festas': 7,
+      'Serviço Automóvel': 7,
+      'Serviços Criativos e Design': 7,
+      'Serviços de Tecnologia e Informática': 6,
+      'Serviços de Saúde e Bem-Estar': 6,
+      'Beleza e Estética': 4,
+      'Serviços de Costura/Alfaiataria/Modista': 4,
+      Educação: 3,
+      'Serviços de Limpeza': 3,
+      'Serviços Domésticos': 3,
     };
 
-    return group ? baseByGroup[group.name] ?? 15 : 15;
+    return group ? baseByGroup[group.name] ?? 3 : 3;
   };
 
   return (
@@ -215,67 +272,95 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
             <TextInput
               label="Título do serviço *"
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(text) => {
+                setTitle(text);
+                if (fieldErrors.title) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.title;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               style={styles.input}
               placeholder="Ex: Pintura de sala e quarto"
+              error={!!fieldErrors.title}
             />
+            {fieldErrors.title && <HelperText type="error">{fieldErrors.title}</HelperText>}
 
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <Button
-                  mode="outlined"
-                  onPress={() => setMenuVisible(true)}
-                  style={styles.input}
-                  contentStyle={styles.menuButton}
-                >
-                  {category || 'Selecione o serviço *'}
-                </Button>
-              }
-            >
-              {ALL_SERVICES.map((service) => (
-                <Menu.Item
-                  key={service}
-                  onPress={() => {
-                    setCategory(service);
-                    setMenuVisible(false);
-                  }}
-                  title={service}
-                />
-              ))}
-            </Menu>
+            <View>
+              <CategoryPicker
+                value={categories}
+                onChange={(selectedCategories) => {
+                  setCategories(selectedCategories);
+                  if (fieldErrors.category) {
+                    setFieldErrors((prev) => {
+                      const newErrors = { ...prev };
+                      delete newErrors.category;
+                      return newErrors;
+                    });
+                  }
+                }}
+                error={fieldErrors.category}
+                label={`${t('client.newRequest.category')} *`}
+                caption={t('client.newRequest.categoryHint')}
+                multiple={true}
+                style={styles.categoryPicker}
+              />
+            </View>
 
             <TextInput
-              label="Descrição detalhada *"
+              label={`${t('client.newRequest.description')} *`}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(text) => {
+                setDescription(text);
+                if (fieldErrors.description) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.description;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               multiline
               numberOfLines={6}
               style={styles.input}
               placeholder="Descreva o serviço em detalhes: o que precisa, quando, requisitos especiais, etc."
+              error={!!fieldErrors.description}
             />
+            {fieldErrors.description && <HelperText type="error">{fieldErrors.description}</HelperText>}
 
-            <LocationPicker
-              value={locationSelection}
-              onChange={(selection) => {
-                setLocationSelection(selection);
-                setLocationError(null);
-              }}
-              onCoordinatesChange={(coords) => {
-                setCoordinates(coords);
-              }}
-              enableGPS={Platform.OS !== 'web'}
-              error={locationError || undefined}
-              style={styles.locationPicker}
-              mode="parish"
-              caption="Selecione distrito, concelho e freguesia do serviço."
-            />
+            <View>
+              <Text style={styles.label}>{t('client.newRequest.location')} *</Text>
+              <LocationPicker
+                value={locationSelection}
+                onChange={(selection) => {
+                  setLocationSelection(selection);
+                  setLocationError(null);
+                  if (fieldErrors.location) {
+                    setFieldErrors((prev) => {
+                      const newErrors = { ...prev };
+                      delete newErrors.location;
+                      return newErrors;
+                    });
+                  }
+                }}
+                onCoordinatesChange={(coords) => {
+                  setCoordinates(coords);
+                }}
+                enableGPS={Platform.OS !== 'web'}
+                error={locationError || fieldErrors.location || undefined}
+                style={styles.locationPicker}
+                mode="parish"
+                caption="Selecione distrito, concelho e freguesia do serviço."
+              />
+              {fieldErrors.location && <HelperText type="error">{fieldErrors.location}</HelperText>}
+            </View>
 
             <TextInput
-              label="Orçamento estimado (€)"
+              label={t('client.newRequest.budget')}
               value={budget}
               onChangeText={setBudget}
               mode="outlined"
@@ -285,8 +370,8 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
             />
 
             <ImagePicker
-              title="Fotos do pedido"
-              subtitle="Adicione imagens para ajudar os profissionais a entenderem melhor o serviço."
+              title={t('client.newRequest.photos')}
+              subtitle={t('client.newRequest.photosSubtitle')}
               images={photos}
               onChange={setPhotos}
               maxImages={5}
@@ -302,14 +387,14 @@ export const NewServiceRequestScreen = ({ navigation }: any) => {
               style={styles.button}
               buttonColor={colors.primary}
             >
-              Publicar Pedido
+              {t('client.newRequest.submit')}
             </Button>
 
             <Text style={styles.infoText}>
-              * Campos obrigatórios
+              * {t('client.newRequest.requiredFields')}
             </Text>
             <Text style={styles.infoText}>
-              ℹ️ Não há custo para solicitar orçamentos. Os profissionais interessados entrarão em contato.
+              ℹ️ {t('client.newRequest.noCostInfo')}
             </Text>
           </Card.Content>
         </Card>
@@ -344,14 +429,20 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 20,
   },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+    marginBottom: 8,
+  },
   input: {
     marginBottom: 16,
   },
   locationPicker: {
     marginBottom: 16,
   },
-  menuButton: {
-    justifyContent: 'flex-start',
+  categoryPicker: {
+    marginBottom: 16,
   },
   button: {
     marginTop: 8,

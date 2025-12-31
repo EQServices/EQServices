@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { List, Text, ActivityIndicator } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Conversation } from '../../types';
@@ -18,6 +19,7 @@ interface ChatListScreenProps {
 }
 
 export const ChatListScreen: React.FC<ChatListScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,17 +52,19 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({ navigation, rout
   );
 
   const renderItem = ({ item }: { item: Conversation }) => {
-    const otherParticipant = item.participants.find((participant) => participant.userId !== user?.id);
-    const title = otherParticipant?.displayName ?? 'Conversa';
+    // Priorizar título do pedido de serviço, depois nome do participante, depois "Conversa"
+    const title = item.serviceRequestTitle 
+      ?? item.participants.find((participant) => participant.userId !== user?.id)?.displayName 
+      ?? t('chat.list.conversation');
     const lastMessagePreview = item.lastMessage
       ? item.lastMessage.content?.trim()
           ? item.lastMessage.content.trim()
           : item.lastMessage.mediaUrl
-            ? '📷 Foto'
-            : 'Nova mensagem'
+            ? t('chat.list.photo')
+            : t('chat.list.newMessage')
       : null;
-    const prefix = item.lastMessage ? (item.lastMessage.senderId === user?.id ? 'Você:' : 'Eles:') : '';
-    const subtitle = lastMessagePreview ? `${prefix} ${lastMessagePreview}` : 'Sem mensagens';
+    const prefix = item.lastMessage ? (item.lastMessage.senderId === user?.id ? t('chat.list.you') : t('chat.list.them')) : '';
+    const subtitle = lastMessagePreview ? `${prefix} ${lastMessagePreview}` : t('chat.list.noMessages');
 
     return (
       <TouchableOpacity
@@ -101,8 +105,8 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({ navigation, rout
   if (conversations.length === 0) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyTitle}>Sem conversas ainda</Text>
-        <Text style={styles.emptySubtitle}>Aceite uma proposta ou inicie uma nova conversa a partir de um pedido.</Text>
+        <Text style={styles.emptyTitle}>{t('chat.list.empty')}</Text>
+        <Text style={styles.emptySubtitle}>{t('chat.list.emptySubtext')}</Text>
       </View>
     );
   }

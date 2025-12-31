@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../theme/colors';
 
 type CheckoutStatus = 'success' | 'cancelled' | 'unknown';
@@ -16,6 +17,7 @@ interface CheckoutStatusScreenProps {
 }
 
 export const CheckoutStatusScreen: React.FC<CheckoutStatusScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const rawStatus = (route.params?.status || route.params?.result || route.params?.Status || '').toString().toLowerCase();
   const statusFromParams: CheckoutStatus =
     rawStatus === 'success' || rawStatus === 'sucesso'
@@ -28,28 +30,27 @@ export const CheckoutStatusScreen: React.FC<CheckoutStatusScreenProps> = ({ navi
     switch (statusFromParams) {
       case 'success':
         return {
-          title: 'Pagamento concluído!',
-          description:
-            'Seu pagamento foi confirmado. Os créditos serão atualizados automaticamente em instantes.',
-          primaryLabel: 'Ver histórico de compras',
+          title: t('checkout.success.title'),
+          description: t('checkout.success.description'),
+          primaryLabel: t('checkout.success.primaryLabel'),
           primaryAction: () => navigation.replace('TransactionHistory'),
         };
       case 'cancelled':
         return {
-          title: 'Pagamento cancelado',
-          description: 'A compra foi cancelada. Pode tentar novamente a qualquer momento.',
-          primaryLabel: 'Voltar para comprar créditos',
+          title: t('checkout.cancelled.title'),
+          description: t('checkout.cancelled.description'),
+          primaryLabel: t('checkout.cancelled.primaryLabel'),
           primaryAction: () => navigation.replace('ProfessionalHome'),
         };
       default:
         return {
-          title: 'Estado desconhecido',
-          description: 'Não foi possível confirmar o estado do pagamento.',
-          primaryLabel: 'Voltar',
+          title: t('checkout.unknown.title'),
+          description: t('checkout.unknown.description'),
+          primaryLabel: t('common.back'),
           primaryAction: () => navigation.goBack(),
         };
     }
-  }, [navigation, statusFromParams]);
+  }, [navigation, statusFromParams, t]);
 
   return (
     <View style={styles.container}>
@@ -59,7 +60,7 @@ export const CheckoutStatusScreen: React.FC<CheckoutStatusScreenProps> = ({ navi
           <Text style={styles.description}>{description}</Text>
 
           {route.params?.session_id ? (
-            <Text style={styles.sessionId}>ID da sessão: {route.params.session_id}</Text>
+            <Text style={styles.sessionId}>{t('checkout.sessionId')}: {route.params.session_id}</Text>
           ) : null}
 
           <Button mode="contained" onPress={primaryAction} style={styles.button} buttonColor={colors.professional}>
@@ -67,7 +68,7 @@ export const CheckoutStatusScreen: React.FC<CheckoutStatusScreenProps> = ({ navi
           </Button>
           {statusFromParams === 'success' ? (
             <Button mode="text" onPress={() => navigation.replace('ProfessionalHome')} textColor={colors.professional}>
-              Voltar para o painel
+              {t('checkout.success.backToDashboard')}
             </Button>
           ) : null}
         </Card.Content>

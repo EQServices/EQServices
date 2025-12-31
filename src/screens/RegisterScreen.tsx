@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { TextInput, Button, Text, Card, RadioButton, HelperText, Chip, Checkbox } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
 import { UserType } from '../types';
@@ -11,6 +12,7 @@ import { Coordinates } from '../services/geolocation';
 import { AppLogo } from '../components/AppLogo';
 
 export const RegisterScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +32,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [termsError, setTermsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { signUp } = useAuth();
 
   const serviceGroups = useMemo(
@@ -45,13 +48,13 @@ export const RegisterScreen = ({ navigation }: any) => {
 
   const handleAddProfessionalRegion = () => {
     if (!professionalRegionSelection.districtId || !professionalRegionSelection.districtName) {
-      setProfessionalRegionError('Selecione um distrito.');
+      setProfessionalRegionError(t('register.selectDistrict'));
       return;
     }
 
     const label = professionalRegionSelection.districtName;
     if (professionalRegions.includes(label)) {
-      setProfessionalRegionError('Distrito já adicionado.');
+      setProfessionalRegionError(t('register.districtAlreadyAdded'));
       return;
     }
 
@@ -65,36 +68,79 @@ export const RegisterScreen = ({ navigation }: any) => {
   };
 
   const handleRegister = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email || !password || !confirmPassword) {
-      setError('Por favor, preencha todos os campos');
+    // Limpar erros anteriores
+    setFieldErrors({});
+    setError('');
+    
+    // Validar campos obrigatórios e identificar quais estão faltando
+    const missingFields: string[] = [];
+    const newFieldErrors: Record<string, string> = {};
+
+    if (!firstName.trim()) {
+      missingFields.push(t('register.firstName'));
+      newFieldErrors.firstName = t('register.requiredField');
+    }
+    if (!lastName.trim()) {
+      missingFields.push(t('register.lastName'));
+      newFieldErrors.lastName = t('register.requiredField');
+    }
+    if (!email.trim()) {
+      missingFields.push(t('auth.email'));
+      newFieldErrors.email = t('register.requiredField');
+    }
+    if (!password) {
+      missingFields.push(t('auth.password'));
+      newFieldErrors.password = t('register.requiredField');
+    }
+    if (!confirmPassword) {
+      missingFields.push(t('auth.confirmPassword'));
+      newFieldErrors.confirmPassword = t('register.requiredField');
+    }
+
+    if (missingFields.length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError(t('register.fillFields', { fields: missingFields.join(', ') }));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(t('register.passwordsDontMatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+      setError(t('register.passwordMinLength'));
       return;
     }
 
     if (phone.trim().length > 0 && !/^\d{9}$/.test(phone.trim())) {
-      setError('O telemóvel deve conter 9 dígitos numéricos');
+      setError(t('register.phoneInvalid'));
       return;
     }
 
-    if (!locationSelection.parishId || !locationSelection.municipalityId || !locationSelection.districtId) {
-      setLocationError('Selecione distrito, concelho e freguesia.');
-      setError('Informe uma localização válida.');
-      return;
+    // Para profissionais, apenas distrito é obrigatório. Para clientes, precisa de distrito, concelho e freguesia
+    if (userType === 'professional') {
+      if (!locationSelection.districtId || !locationSelection.districtName) {
+        setLocationError(t('register.selectDistrict'));
+        setError(t('register.validDistrictRequired'));
+        return;
+      }
+    } else {
+      if (!locationSelection.parishId || !locationSelection.municipalityId || !locationSelection.districtId) {
+        setLocationError(t('register.selectLocationRequired'));
+        setError(t('register.validLocationRequired'));
+        return;
+      }
     }
 
     const locationLabel = formatLocationSelection(locationSelection);
     if (!locationLabel) {
-      setLocationError('Seleção inválida. Escolha novamente a freguesia.');
-      setError('Informe uma localização válida.');
+      if (userType === 'professional') {
+        setLocationError(t('register.invalidSelectionDistrict'));
+      } else {
+        setLocationError(t('register.invalidSelectionParish'));
+      }
+      setError(t('register.validLocationRequired'));
       return;
     }
 
@@ -106,24 +152,24 @@ export const RegisterScreen = ({ navigation }: any) => {
       let hasProfessionalErrors = false;
 
       if (professionalRegions.length === 0) {
-        setProfessionalRegionError('Adicione pelo menos um distrito de atendimento.');
+        setProfessionalRegionError(t('register.addAtLeastOneRegion'));
         hasProfessionalErrors = true;
       }
 
       if (professionalServices.length === 0) {
-        setProfessionalServicesError('Selecione pelo menos um serviço/categoria.');
+        setProfessionalServicesError(t('register.selectAtLeastOneService'));
         hasProfessionalErrors = true;
       }
 
     if (hasProfessionalErrors) {
-      setError('Preencha os dados profissionais obrigatórios.');
+      setError(t('register.fillProfessionalData'));
       return;
     }
   }
 
   if (!acceptedTerms) {
-    setTermsError('Deve aceitar os termos de uso e política de privacidade para continuar.');
-    setError('Deve aceitar os termos de uso e política de privacidade.');
+    setTermsError(t('register.mustAcceptTerms'));
+    setError(t('register.mustAcceptTermsError'));
     return;
   }
 
@@ -142,8 +188,8 @@ export const RegisterScreen = ({ navigation }: any) => {
         userType,
         location: {
           districtId: locationSelection.districtId!,
-          municipalityId: locationSelection.municipalityId!,
-          parishId: locationSelection.parishId!,
+          municipalityId: userType === 'professional' ? undefined : locationSelection.municipalityId!,
+          parishId: userType === 'professional' ? undefined : locationSelection.parishId!,
           label: locationLabel,
           latitude: coordinates?.latitude ?? null,
           longitude: coordinates?.longitude ?? null,
@@ -153,7 +199,7 @@ export const RegisterScreen = ({ navigation }: any) => {
       });
       navigation.navigate('Login');
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar conta');
+      setError(err.message || t('register.registerError'));
     } finally {
       setLoading(false);
     }
@@ -171,54 +217,109 @@ export const RegisterScreen = ({ navigation }: any) => {
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text style={styles.cardTitle}>Criar Conta</Text>
+            <Text style={styles.cardTitle}>{t('register.title')}</Text>
 
             <TextInput
-              label="Nome"
+              label={`${t('register.firstName')} *`}
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(text) => {
+                setFirstName(text);
+                if (fieldErrors.firstName) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.firstName;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               style={styles.input}
+              error={!!fieldErrors.firstName}
             />
+            {fieldErrors.firstName && <HelperText type="error">{fieldErrors.firstName}</HelperText>}
 
             <TextInput
-              label="Apelido"
+              label={`${t('register.lastName')} *`}
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(text) => {
+                setLastName(text);
+                if (fieldErrors.lastName) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.lastName;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               style={styles.input}
+              error={!!fieldErrors.lastName}
             />
+            {fieldErrors.lastName && <HelperText type="error">{fieldErrors.lastName}</HelperText>}
 
             <TextInput
-              label="Email"
+              label={`${t('auth.email')} *`}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (fieldErrors.email) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.email;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
+              error={!!fieldErrors.email}
             />
+            {fieldErrors.email && <HelperText type="error">{fieldErrors.email}</HelperText>}
 
             <TextInput
-              label="Senha"
+              label={`${t('auth.password')} *`}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (fieldErrors.password) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.password;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               secureTextEntry
               style={styles.input}
+              error={!!fieldErrors.password}
             />
+            {fieldErrors.password && <HelperText type="error">{fieldErrors.password}</HelperText>}
 
             <TextInput
-              label="Confirmar senha"
+              label={`${t('auth.confirmPassword')} *`}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (fieldErrors.confirmPassword) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.confirmPassword;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               secureTextEntry
               style={styles.input}
+              error={!!fieldErrors.confirmPassword}
             />
+            {fieldErrors.confirmPassword && <HelperText type="error">{fieldErrors.confirmPassword}</HelperText>}
 
             <TextInput
-              label="Telemóvel (9 dígitos)"
+              label={t('register.phone')}
               value={phone}
               onChangeText={setPhone}
               mode="outlined"
@@ -228,9 +329,11 @@ export const RegisterScreen = ({ navigation }: any) => {
             />
 
             <View style={styles.locationSection}>
-              <Text style={styles.sectionTitle}>Localização principal</Text>
+              <Text style={styles.sectionTitle}>{t('register.mainLocation')} *</Text>
               <Text style={styles.sectionSubtitle}>
-                Informe onde está localizado. Utilize o autocomplete para selecionar freguesia, concelho e distrito.
+                {userType === 'professional' 
+                  ? t('register.mainLocationSubtitleProfessional')
+                  : t('register.mainLocationSubtitleClient')}
               </Text>
               <LocationPicker
                 value={locationSelection}
@@ -242,14 +345,14 @@ export const RegisterScreen = ({ navigation }: any) => {
                   setCoordinates(coords);
                 }}
                 enableGPS={Platform.OS !== 'web'}
-                mode="parish"
-                caption="Selecione distrito, concelho e freguesia."
+                mode={userType === 'professional' ? 'district' : 'parish'}
+                caption={userType === 'professional' ? t('register.selectDistrict') : t('register.selectLocationRequired')}
                 error={locationError || undefined}
               />
               {locationError ? <HelperText type="error">{locationError}</HelperText> : null}
             </View>
 
-            <Text style={styles.label}>Tipo de conta:</Text>
+            <Text style={styles.label}>{t('register.accountType')}</Text>
             <RadioButton.Group
               onValueChange={(value) => {
                 const nextType = value as UserType;
@@ -262,17 +365,17 @@ export const RegisterScreen = ({ navigation }: any) => {
               value={userType}
             >
               <View style={styles.radioContainer}>
-                <RadioButton.Item label="Cliente" value="client" />
-                <RadioButton.Item label="Profissional" value="professional" />
+                <RadioButton.Item label={t('auth.client')} value="client" />
+                <RadioButton.Item label={t('auth.professional')} value="professional" />
               </View>
             </RadioButton.Group>
 
             {userType === 'professional' ? (
               <>
                 <View style={styles.professionalSection}>
-                  <Text style={styles.sectionTitle}>Distritos de atendimento</Text>
+                  <Text style={styles.sectionTitle}>{t('register.serviceRegions')} *</Text>
                   <Text style={styles.sectionSubtitle}>
-                    Adicione os distritos onde irá atender. Pode informar vários distritos.
+                    {t('register.serviceRegionsSubtitle')}
                   </Text>
                   <LocationPicker
                     value={professionalRegionSelection}
@@ -281,7 +384,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                       setProfessionalRegionError(null);
                     }}
                     mode="district"
-                    caption="Selecione um distrito e depois clique em adicionar."
+                    caption={t('register.selectDistrictAndAdd')}
                     error={professionalRegionError || undefined}
                   />
                   <Button
@@ -290,11 +393,11 @@ export const RegisterScreen = ({ navigation }: any) => {
                     style={styles.addRegionButton}
                     textColor={colors.primary}
                   >
-                    Adicionar distrito
+                    {t('register.addRegion')}
                   </Button>
                   <View style={styles.chipGroup}>
                     {professionalRegions.length === 0 ? (
-                      <Text style={styles.emptyText}>Nenhum distrito adicionado.</Text>
+                      <Text style={styles.emptyText}>{t('register.noRegionsAdded')}</Text>
                     ) : (
                       professionalRegions.map((region) => (
                         <Chip
@@ -312,8 +415,8 @@ export const RegisterScreen = ({ navigation }: any) => {
                 </View>
 
                 <View style={styles.professionalSection}>
-                  <Text style={styles.sectionTitle}>Serviços oferecidos</Text>
-                  <Text style={styles.sectionSubtitle}>Selecione pelo menos uma categoria em que atua.</Text>
+                  <Text style={styles.sectionTitle}>{t('register.servicesOffered')} *</Text>
+                  <Text style={styles.sectionSubtitle}>{t('register.servicesSubtitle')}</Text>
                   <View style={styles.serviceGroups}>
                     {serviceGroups.map((group) => (
                       <View key={group.name} style={styles.serviceGroupBlock}>
@@ -357,19 +460,19 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
                 <View style={styles.termsTextContainer}>
                   <Text style={styles.termsText}>
-                    Aceito os{' '}
+                    {t('register.acceptTerms')}{' '}
                     <Text
                       style={styles.termsLink}
                       onPress={() => navigation.navigate('TermsOfService')}
                     >
-                      Termos de Uso
+                      {t('register.termsOfService')}
                     </Text>
-                    {' '}e a{' '}
+                    {' '}{t('register.and')}{' '}
                     <Text
                       style={styles.termsLink}
                       onPress={() => navigation.navigate('PrivacyPolicy')}
                     >
-                      Política de Privacidade
+                      {t('register.privacyPolicy')}
                     </Text>
                   </Text>
                 </View>
@@ -387,7 +490,7 @@ export const RegisterScreen = ({ navigation }: any) => {
               style={styles.button}
               buttonColor={colors.primary}
             >
-              Cadastrar
+              {t('register.register')}
             </Button>
 
             <Button
@@ -395,7 +498,7 @@ export const RegisterScreen = ({ navigation }: any) => {
               onPress={() => navigation.navigate('Login')}
               style={styles.linkButton}
             >
-              Já tem conta? Faça login
+              {t('register.alreadyHaveAccount')}
             </Button>
           </Card.Content>
         </Card>

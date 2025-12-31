@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { LanguageProvider } from './src/contexts/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { Platform, View } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { LandingPage } from './src/screens/web/LandingPage';
 import { SplashOverlay } from './src/components/SplashOverlay';
 import * as SplashScreen from 'expo-splash-screen';
@@ -14,6 +15,8 @@ import { useAnalyticsSetup } from './src/hooks/useAnalytics';
 import { logger } from './src/services/logger';
 import { CookieConsentBanner } from './src/components/CookieConsentBanner';
 import * as Sentry from '@sentry/react-native';
+import { handlePasswordResetFromQuery } from './src/utils/handlePasswordReset';
+import { initI18n } from './src/i18n/config';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://1f64e493ce8a3698166ea7d0300f05e1@o4510460187705344.ingest.de.sentry.io/4510460190523472',
@@ -43,20 +46,30 @@ export default Sentry.wrap(function App() {
   const [showApp, setShowApp] = useState(!isWeb);
   const [appIsReady, setAppIsReady] = useState(isWeb);
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
-    if (isWeb) {
-      return;
-    }
-
     let mounted = true;
 
     const prepare = async () => {
       try {
-        // Aqui poderíamos carregar fontes, assets, etc.
-        await new Promise((resolve) => setTimeout(resolve, 900));
-      } finally {
+        // Inicializar i18n primeiro
+        await initI18n();
         if (mounted) {
+          setI18nReady(true);
+        }
+
+        if (!isWeb) {
+          // Aguardar um pouco para splash screen no mobile
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          if (mounted) {
+            setAppIsReady(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar app:', error);
+        if (mounted) {
+          setI18nReady(true);
           setAppIsReady(true);
         }
       }
@@ -76,34 +89,42 @@ export default Sentry.wrap(function App() {
     }
   }, [appIsReady, isWeb]);
 
-  if (!appIsReady && !isWeb) {
+  if (!i18nReady || (!appIsReady && !isWeb)) {
     return (
       <ThemeProvider>
-        <SplashOverlay duration={1600} />
+        {isWeb ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" />
+          </View>
+        ) : (
+          <SplashOverlay duration={1600} />
+        )}
       </ThemeProvider>
     );
   }
 
   return (
     <ThemeProvider>
-      <ToastProvider>
-        {showApp ? (
-          <AppWithOffline>
-            <View style={{ flex: 1 }}>
-              <AuthProvider>
-                <AppContent />
-              </AuthProvider>
-              <StatusBar style="light" />
-              {!isWeb && overlayVisible ? (
-                <SplashOverlay duration={700} onFinish={() => setOverlayVisible(false)} />
-              ) : null}
-              {isWeb && <CookieConsentBanner />}
-            </View>
-          </AppWithOffline>
-        ) : (
-          <LandingPage onEnterApp={() => setShowApp(true)} />
-        )}
-      </ToastProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          {showApp ? (
+            <AppWithOffline>
+              <View style={{ flex: 1 }}>
+                <AuthProvider>
+                  <AppContent />
+                </AuthProvider>
+                <StatusBar style="light" />
+                {!isWeb && overlayVisible ? (
+                  <SplashOverlay duration={700} onFinish={() => setOverlayVisible(false)} />
+                ) : null}
+                {isWeb && <CookieConsentBanner />}
+              </View>
+            </AppWithOffline>
+          ) : (
+            <LandingPage onEnterApp={() => setShowApp(true)} />
+          )}
+        </ToastProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 });
@@ -115,6 +136,24 @@ function AppContent() {
     initializeMonitoring().catch((error) => {
       logger.error('Erro ao inicializar monitoramento', { error });
     });
+  }, []);
+
+  // Processar token de reset de senha quando vem via query parameters
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const type = urlParams.get('type');
+      
+      // Se há token de recovery na query string, processar e redirecionar
+      // Funciona tanto na raiz quanto em outras páginas
+      if (token && type === 'recovery') {
+        console.log('Token de recovery detectado na URL, processando...');
+        handlePasswordResetFromQuery().catch((error) => {
+          console.error('Erro ao processar reset de senha:', error);
+        });
+      }
+    }
   }, []);
 
   return <AppNavigator />;

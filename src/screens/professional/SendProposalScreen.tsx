@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Text, TextInput } from 'react-native-paper';
+import { Button, Card, Text, TextInput, HelperText } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
@@ -18,6 +19,7 @@ interface SendProposalScreenProps {
 }
 
 export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { user, isValid } = useRequireUserType('professional');
   const { leadId, serviceRequestId } = route.params;
 
@@ -26,6 +28,7 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
   const [estimatedDuration, setEstimatedDuration] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async () => {
     if (!user?.id) {
@@ -33,16 +36,37 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
       return;
     }
 
-    if (!price || !description.trim()) {
-      setError('Informe pelo menos o valor e uma descrição da proposta.');
+    // Limpar erros anteriores
+    setFieldErrors({});
+    setError(null);
+
+    // Validar campos obrigatórios e identificar quais estão faltando
+    const missingFields: string[] = [];
+    const newFieldErrors: Record<string, string> = {};
+
+    if (!price.trim()) {
+      missingFields.push('Valor da proposta');
+      newFieldErrors.price = 'Campo obrigatório';
+    } else {
+      const parsedPrice = Number(price.replace(',', '.'));
+      if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+        missingFields.push(t('professional.sendProposal.priceLabel'));
+        newFieldErrors.price = t('professional.sendProposal.invalidPrice');
+      }
+    }
+
+    if (!description.trim()) {
+      missingFields.push(t('professional.sendProposal.descriptionLabel'));
+      newFieldErrors.description = t('client.newRequest.requiredField');
+    }
+
+    if (missingFields.length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError(t('client.newRequest.fillFields', { fields: missingFields.join(', ') }));
       return;
     }
 
     const parsedPrice = Number(price.replace(',', '.'));
-    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
-      setError('Informe um valor válido para a proposta.');
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -56,11 +80,11 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
 
       if (requestError) throw requestError;
       if (!requestStatus) {
-        throw new Error('Pedido não encontrado ou já removido.');
+        throw new Error(t('professional.sendProposal.requestNotFound'));
       }
 
       if (requestStatus.status !== 'pending') {
-        throw new Error('Este pedido já não aceita novas propostas.');
+        throw new Error(t('professional.sendProposal.requestNotAccepting'));
       }
 
       const { error: insertError } = await supabase.from('proposals').insert({
@@ -104,39 +128,61 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.card}>
           <Card.Content style={styles.cardContent}>
-            <Text style={styles.title}>Enviar proposta</Text>
+            <Text style={styles.title}>{t('professional.sendProposal.title')}</Text>
             <Text style={styles.subtitle}>
-              Apresente o seu orçamento ao cliente. O contato será feito diretamente entre vocês após o envio.
+              {t('professional.sendProposal.subtitle')}
             </Text>
 
             <TextInput
-              label="Valor da proposta (€)"
+              label={t('professional.sendProposal.priceLabel')}
               value={price}
-              onChangeText={setPrice}
+              onChangeText={(text) => {
+                setPrice(text);
+                if (fieldErrors.price) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.price;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               keyboardType="numeric"
               style={styles.input}
-              placeholder="Ex.: 120"
+              placeholder={t('professional.sendProposal.pricePlaceholder')}
+              error={!!fieldErrors.price}
             />
+            {fieldErrors.price && <HelperText type="error">{fieldErrors.price}</HelperText>}
 
             <TextInput
-              label="Descrição detalhada"
+              label={t('professional.sendProposal.descriptionLabel')}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(text) => {
+                setDescription(text);
+                if (fieldErrors.description) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.description;
+                    return newErrors;
+                  });
+                }
+              }}
               mode="outlined"
               multiline
               numberOfLines={6}
               style={styles.input}
-              placeholder="Explique como pretende executar o serviço, materiais, etapas e condições."
+              placeholder={t('professional.sendProposal.descriptionPlaceholder')}
+              error={!!fieldErrors.description}
             />
+            {fieldErrors.description && <HelperText type="error">{fieldErrors.description}</HelperText>}
 
             <TextInput
-              label="Prazo estimado (opcional)"
+              label={t('professional.sendProposal.durationLabel')}
               value={estimatedDuration}
               onChangeText={setEstimatedDuration}
               mode="outlined"
               style={styles.input}
-              placeholder="Ex.: 3 dias úteis"
+              placeholder={t('professional.sendProposal.durationPlaceholder')}
             />
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -149,7 +195,7 @@ export const SendProposalScreen: React.FC<SendProposalScreenProps> = ({ navigati
               style={styles.button}
               buttonColor={colors.secondary}
             >
-              Enviar proposta
+              {t('professional.sendProposal.submit')}
             </Button>
           </Card.Content>
         </Card>

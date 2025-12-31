@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, Card, HelperText, Switch, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../config/supabase';
 import { colors } from '../theme/colors';
@@ -12,6 +13,7 @@ import { LocationSelection, formatLocationSelection } from '../services/location
 import { Coordinates } from '../services/geolocation';
 
 export const EditProfileScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user, updateUserContext } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
   const isDarkMode = mode === 'dark';
@@ -198,7 +200,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
               parishId: data.parish_id ?? undefined,
               ...buildSelectionFromLabel(data.location_label),
             });
-            setLocationError('Não foi possível carregar a morada atual. Selecione novamente.');
+            setLocationError(t('profile.edit.loading'));
             
             // Carregar coordenadas se existirem mesmo em caso de erro
             if (data.latitude && data.longitude) {
@@ -212,7 +214,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
         setProfileError(null);
       } catch (err: any) {
         console.error('Erro ao carregar perfil:', err);
-        setProfileError(err.message || 'Não foi possível carregar os dados.');
+        setProfileError(err.message || t('profile.edit.loading'));
       } finally {
         setLoading(false);
       }
@@ -225,8 +227,8 @@ export const EditProfileScreen = ({ navigation }: any) => {
     const { status } = await ImagePickerLib.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permissão necessária',
-        'Precisamos de acesso às suas fotos para permitir o upload. Verifique as permissões nas definições do dispositivo.',
+        t('profile.edit.permissionRequired'),
+        t('profile.edit.permissionMessage'),
       );
       return;
     }
@@ -261,7 +263,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
     if (!user?.id) return;
 
     if (!name.trim()) {
-      setProfileError('Informe o seu nome.');
+      setProfileError(t('profile.edit.requiredField'));
       return;
     }
 
@@ -284,7 +286,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
         } catch (uploadError: any) {
           console.error('Erro ao fazer upload do avatar:', uploadError);
           setProfileError(
-            uploadError.message || 'Não foi possível fazer upload da imagem. Tente novamente.',
+            uploadError.message || t('profile.edit.saveError'),
           );
           return;
         }
@@ -353,7 +355,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
       setNewAvatarUri(null);
       setRemoveAvatar(false);
 
-      setProfileSuccess('Perfil atualizado com sucesso.');
+      setProfileSuccess(t('profile.edit.saveSuccess'));
       if (navigation.canGoBack()) {
         navigation.goBack();
       }
@@ -362,8 +364,8 @@ export const EditProfileScreen = ({ navigation }: any) => {
       const errorMessage =
         err.message ||
         (err.code === 'PGRST301'
-          ? 'Erro de permissão. Verifique se está autenticado.'
-          : 'Não foi possível atualizar o perfil.');
+          ? t('profile.edit.invalidSession')
+          : t('profile.edit.saveError'));
       setProfileError(errorMessage);
     } finally {
       setSavingProfile(false);
@@ -374,12 +376,12 @@ export const EditProfileScreen = ({ navigation }: any) => {
     if (!user?.id) return;
 
     if (!newPassword || newPassword.length < 6) {
-      setPasswordError('A nova senha deve ter pelo menos 6 caracteres.');
+      setPasswordError(t('profile.edit.passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('As senhas não coincidem.');
+      setPasswordError(t('profile.edit.passwordMismatch'));
       return;
     }
 
@@ -394,12 +396,12 @@ export const EditProfileScreen = ({ navigation }: any) => {
 
       if (error) throw error;
 
-      setPasswordSuccess('Senha atualizada com sucesso.');
+      setPasswordSuccess(t('profile.edit.passwordSuccess'));
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       console.error('Erro ao atualizar senha:', err);
-      setPasswordError(err.message || 'Não foi possível atualizar a senha.');
+      setPasswordError(err.message || t('profile.edit.passwordError'));
     } finally {
       setSavingPassword(false);
     }
@@ -409,10 +411,10 @@ export const EditProfileScreen = ({ navigation }: any) => {
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={{ gap: 16 }}>
-          <Text style={styles.title}>Editar Perfil</Text>
+          <Text style={styles.title}>{t('profile.edit.title')}</Text>
 
           {loading ? (
-            <Text style={styles.loading}>A carregar dados...</Text>
+            <Text style={styles.loading}>{t('profile.edit.loading')}</Text>
           ) : (
             <>
               <View style={styles.avatarSection}>
@@ -428,20 +430,20 @@ export const EditProfileScreen = ({ navigation }: any) => {
                     textColor={colors.primary}
                     style={styles.avatarButton}
                   >
-                    Alterar avatar
+                    {t('profile.edit.selectAvatar')}
                   </Button>
                   {avatarPreview || avatarUrl ? (
                     <Button mode="text" onPress={handleRemoveAvatar} textColor={colors.error}>
-                      Remover avatar
+                      {t('profile.edit.removeAvatar')}
                     </Button>
                   ) : null}
                 </View>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Informações pessoais</Text>
+                <Text style={styles.sectionTitle}>{t('profile.edit.personalInfo')}</Text>
                 <TextInput
-                  label="Nome"
+                  label={t('profile.edit.name')}
                   mode="outlined"
                   value={name}
                   onChangeText={setName}
@@ -449,15 +451,15 @@ export const EditProfileScreen = ({ navigation }: any) => {
                   autoCapitalize="words"
                 />
                 <TextInput
-                  label="Email"
+                  label={t('profile.edit.email')}
                   mode="outlined"
                   value={email}
                   editable={false}
                   style={styles.input}
-                  right={<TextInput.Affix text="não editável" />}
+                  right={<TextInput.Affix text={t('common.edit')} disabled />}
                 />
                 <TextInput
-                  label="Telemóvel (opcional)"
+                  label={t('profile.edit.phone')}
                   mode="outlined"
                   value={phone}
                   onChangeText={setPhone}
@@ -485,14 +487,14 @@ export const EditProfileScreen = ({ navigation }: any) => {
                   disabled={savingProfile}
                   style={styles.primaryButton}
                 >
-                  Guardar alterações
+                  {t('profile.edit.save')}
                 </Button>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Alterar senha</Text>
+                <Text style={styles.sectionTitle}>{t('profile.edit.password')}</Text>
                 <TextInput
-                  label="Nova senha"
+                  label={t('profile.edit.newPassword')}
                   mode="outlined"
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -500,7 +502,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
                   style={styles.input}
                 />
                 <TextInput
-                  label="Confirmar nova senha"
+                  label={t('profile.edit.confirmPassword')}
                   mode="outlined"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -517,7 +519,7 @@ export const EditProfileScreen = ({ navigation }: any) => {
                   style={styles.secondaryButton}
                   textColor={colors.primary}
                 >
-                  Atualizar senha
+                  {t('profile.edit.changePassword')}
                 </Button>
               </View>
             </>
@@ -528,10 +530,9 @@ export const EditProfileScreen = ({ navigation }: any) => {
         <Card.Content>
           <View style={styles.preferenceRow}>
             <View style={styles.preferenceText}>
-              <Text style={styles.preferenceTitle}>Modo escuro</Text>
+              <Text style={styles.preferenceTitle}>{t('settings.darkMode')}</Text>
               <Text style={styles.preferenceSubtitle}>
-                Alterna a interface para tons escuros. A aplicação seguirá o sistema automaticamente, mas
-                pode ser ajustado manualmente aqui.
+                {t('settings.darkModeDescription')}
               </Text>
             </View>
             <Switch value={isDarkMode} onValueChange={toggleTheme} color={colors.primary} />

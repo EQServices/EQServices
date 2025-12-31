@@ -13,8 +13,8 @@ interface SignUpInput {
   userType: UserType;
   location?: {
     districtId: string;
-    municipalityId: string;
-    parishId: string;
+    municipalityId?: string;
+    parishId?: string;
     label: string;
     latitude?: number | null;
     longitude?: number | null;
@@ -54,7 +54,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
+      
+      // Se o evento é PASSWORD_RECOVERY e estamos na raiz, redirecionar para reset-password
+      if (event === 'PASSWORD_RECOVERY' && typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '') {
+          console.log('PASSWORD_RECOVERY detectado na raiz, redirecionando para reset-password');
+          setTimeout(() => {
+            window.location.href = '/reset-password';
+          }, 500);
+        }
+      }
+      
       setSession(session);
       if (session?.user) {
         loadUserData(session.user.id);
@@ -133,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Após login bem-sucedido, verificar se o userType está correto no banco
     // Isso garante que o tipo de usuário não foi alterado manualmente
-    const { data: session } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       const { data: userData } = await supabase
         .from('users')
@@ -195,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Criar perfil do usuário
+      // Para profissionais, apenas distrito é obrigatório (municipality_id e parish_id podem ser null)
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         email,
@@ -204,8 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user_type: userType,
         phone: phone?.trim() || null,
         district_id: location.districtId,
-        municipality_id: location.municipalityId,
-        parish_id: location.parishId,
+        municipality_id: location.municipalityId || null,
+        parish_id: location.parishId || null,
         location_label: location.label,
         latitude: location.latitude ?? null,
         longitude: location.longitude ?? null,

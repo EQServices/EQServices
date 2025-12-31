@@ -1,32 +1,54 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, Image, Linking, Platform } from 'react-native';
 import { Button, Card, Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../theme/colors';
+import { handlePasswordResetFromQuery } from '../../utils/handlePasswordReset';
 
 interface LandingPageProps {
   onEnterApp: () => void;
 }
 
-const CREDIT_PACKAGES = [
-  { name: 'Pacote Básico', credits: 50, price: 45, description: 'Ideal para começar a captar novos clientes (10% de desconto).' },
-  { name: 'Pacote Premium', credits: 100, price: 80, description: 'Melhor custo-benefício com 20% de desconto.' },
-  { name: 'Pay as you go', credits: 1, price: 1, description: 'Compre moedas conforme a demanda do seu negócio.' },
-];
-
-const CLIENT_STEPS = [
-  { title: 'Descreva o serviço', text: 'Informe categoria, localização, detalhes e fotos para explicar o que precisa.' },
-  { title: 'Receba propostas', text: 'Profissionais avaliados enviam orçamentos e você compara valores, prazos e reputação.' },
-  { title: 'Feche direto', text: 'Converse pelo chat ou telefone, negocie e combine o serviço com total liberdade.' },
-];
-
-const PRO_STEPS = [
-  { title: 'Cadastre-se e configure', text: 'Escolha categorias, regiões de atuação e monte o seu portfólio.' },
-  { title: 'Compre créditos', text: 'Adquira moedas com cartão de crédito ou carteira digital para desbloquear contatos.' },
-  { title: 'Conquiste novos clientes', text: 'Veja leads qualificados, desbloqueie os que interessam e envie propostas.' },
-];
-
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
+
+  const CREDIT_PACKAGES = useMemo(() => [
+    { name: t('landing.packages.initial'), credits: 20, price: 19, description: t('landing.packages.initialDescription') },
+    { name: t('landing.packages.basic'), credits: 50, price: 45, description: t('landing.packages.basicDescription') },
+    { name: t('landing.packages.premium'), credits: 100, price: 80, description: t('landing.packages.premiumDescription') },
+    { name: t('landing.packages.payAsYouGo'), credits: 1, price: 1, description: t('landing.packages.payAsYouGoDescription') },
+  ], [t]);
+
+  const CLIENT_STEPS = useMemo(() => [
+    { title: t('landing.clientSteps.step1Title'), text: t('landing.clientSteps.step1Text') },
+    { title: t('landing.clientSteps.step2Title'), text: t('landing.clientSteps.step2Text') },
+    { title: t('landing.clientSteps.step3Title'), text: t('landing.clientSteps.step3Text') },
+  ], [t]);
+
+  const PRO_STEPS = useMemo(() => [
+    { title: t('landing.professionalSteps.step1Title'), text: t('landing.professionalSteps.step1Text') },
+    { title: t('landing.professionalSteps.step2Title'), text: t('landing.professionalSteps.step2Text') },
+    { title: t('landing.professionalSteps.step3Title'), text: t('landing.professionalSteps.step3Text') },
+  ], [t]);
+
+  // Processar token de reset de senha ou magic link se vier via query parameters
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const type = urlParams.get('type');
+      const hash = window.location.hash;
+      
+      // Se há token de recovery ou magic link, processar e redirecionar
+      if ((token && (type === 'recovery' || type === 'magiclink')) ||
+          (hash && (hash.includes('type=recovery') || hash.includes('type=magiclink')))) {
+        handlePasswordResetFromQuery().catch((error) => {
+          console.error('Erro ao processar token:', error);
+        });
+      }
+    }
+  }, []);
 
   const handleOpenPolicy = (path: string) => {
     if (Platform.OS === 'web') {
@@ -56,12 +78,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.heroSection}>
+        <View style={styles.heroImageWrapper}>
+          <Image source={require('../../../assets/images/logo.png')} style={styles.heroImage} resizeMode="contain" />
+        </View>
         <View style={styles.heroText}>
-          <Text style={styles.tag}>Marketplace de serviços em Portugal</Text>
-          <Text style={styles.title}>Conectamos clientes a profissionais de confiança</Text>
+          <Text style={styles.tag}>{t('landing.tag')}</Text>
+          <Text style={styles.title}>{t('landing.title')}</Text>
           <Text style={styles.subtitle}>
-            Solicite um serviço sem custo ou desbloqueie novos leads para o seu negócio. O Elastiquality aproxima quem
-            precisa de ajuda de quem sabe fazer.
+            {t('landing.subtitle')}
           </Text>
           <View style={styles.ctaRow}>
             <Button
@@ -70,21 +94,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
               buttonColor={colors.primary}
               style={styles.ctaButton}
             >
-              Sou cliente
+              {t('landing.clientButton')}
             </Button>
             <Button mode="outlined" onPress={onEnterApp} textColor={colors.primaryDark} style={styles.ctaButton}>
-              Sou profissional
+              {t('landing.professionalButton')}
             </Button>
           </View>
-          <Text style={styles.helperText}>Disponível em Web, Android e iOS. É grátis para solicitar orçamentos.</Text>
-        </View>
-        <View style={styles.heroImageWrapper}>
-          <Image source={require('../../../assets/images/logo.png')} style={styles.heroImage} resizeMode="contain" />
+          <Text style={styles.helperText}>{t('landing.helperText')}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Como funciona para clientes</Text>
+        <Text style={styles.sectionTitle}>{t('landing.howItWorksClients')}</Text>
         <View style={styles.cardsRow}>
           {CLIENT_STEPS.map((step) => (
             <Card key={step.title} style={styles.infoCard}>
@@ -98,7 +119,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       </View>
 
       <View style={styles.sectionAlt}>
-        <Text style={styles.sectionTitle}>Como funciona para profissionais</Text>
+        <Text style={styles.sectionTitle}>{t('landing.howItWorksProfessionals')}</Text>
         <View style={styles.cardsRow}>
           {PRO_STEPS.map((step) => (
             <Card key={step.title} style={styles.infoCardAlt}>
@@ -112,30 +133,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Por que escolher o Elastiquality?</Text>
+        <Text style={styles.sectionTitle}>{t('landing.whyChoose')}</Text>
         <View style={styles.featuresGrid}>
           <Card style={styles.featureCard}>
             <Card.Content>
-              <Text style={styles.featureTitle}>Leads qualificados</Text>
+              <Text style={styles.featureTitle}>{t('landing.features.qualifiedLeads')}</Text>
               <Text style={styles.cardText}>
-                Usamos filtros por categoria, localização e demanda para entregar oportunidades alinhadas ao seu perfil.
+                {t('landing.features.qualifiedLeadsText')}
               </Text>
             </Card.Content>
           </Card>
           <Card style={styles.featureCard}>
             <Card.Content>
-              <Text style={styles.featureTitle}>Reputação transparente</Text>
+              <Text style={styles.featureTitle}>{t('landing.features.transparentReputation')}</Text>
               <Text style={styles.cardText}>
-                Avaliações, histórico e portfólio ajudam clientes a decidir com mais confiança e destacar bons
-                profissionais.
+                {t('landing.features.transparentReputationText')}
               </Text>
             </Card.Content>
           </Card>
           <Card style={styles.featureCard}>
             <Card.Content>
-              <Text style={styles.featureTitle}>Gestão em tempo real</Text>
+              <Text style={styles.featureTitle}>{t('landing.features.realTimeManagement')}</Text>
               <Text style={styles.cardText}>
-                Acompanhe leads, propostas e gastos em um painel completo, com alertas via app, e-mail e push.
+                {t('landing.features.realTimeManagementText')}
               </Text>
             </Card.Content>
           </Card>
@@ -143,32 +163,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       </View>
 
       <View style={styles.sectionAlt}>
-        <Text style={styles.sectionTitle}>Planos de créditos flexíveis</Text>
+        <Text style={styles.sectionTitle}>{t('landing.creditPlans')}</Text>
         <Text style={styles.sectionSubtitle}>
-          Compre moedas e desbloqueie contatos qualificados. Cada lead exibe o custo antes do desbloqueio.
+          {t('landing.creditPlansSubtitle')}
         </Text>
         <View style={styles.cardsRow}>
           {CREDIT_PACKAGES.map((pkg) => (
             <Card key={pkg.name} style={styles.packageCard}>
               <Card.Content>
                 <Text style={styles.packageTitle}>{pkg.name}</Text>
-                <Text style={styles.packagePrice}>{pkg.credits} moedas</Text>
+                <Text style={styles.packagePrice}>{pkg.credits} {t('landing.packages.credits')}</Text>
                 <Text style={styles.packageValue}>€ {pkg.price.toFixed(2)}</Text>
                 <Text style={styles.cardText}>{pkg.description}</Text>
                 <Button mode="contained-tonal" onPress={onEnterApp} style={styles.packageButton}>
-                  Comprar créditos
+                  {t('landing.packages.buyCredits')}
                 </Button>
               </Card.Content>
             </Card>
           ))}
         </View>
-        <Text style={styles.helperText}>Moedas expiram em 3 meses. Pagamento por cartão, Apple Pay ou Google Pay.</Text>
+        <Text style={styles.helperText}>{t('landing.packages.expiryInfo')}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pronto para começar?</Text>
+        <Text style={styles.sectionTitle}>{t('landing.readyToStart')}</Text>
         <Text style={styles.sectionSubtitle}>
-          Clientes pedem sem custo. Profissionais desbloqueiam leads e aumentam a agenda de serviços.
+          {t('landing.readyToStartSubtitle')}
         </Text>
         <View style={styles.ctaRow}>
           <Button
@@ -177,29 +197,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             buttonColor={theme.colors.primary}
             style={styles.ctaButtonWide}
           >
-            Acessar plataforma
+            {t('landing.accessPlatform')}
           </Button>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerTitle}>Elastiquality</Text>
-        <Text style={styles.footerText}>Marketplace português que conecta clientes a profissionais locais.</Text>
-        <Text style={styles.footerText}>Suporte: suporte@elastiquality.pt</Text>
+        <Text style={styles.footerTitle}>{t('landing.footerTitle')}</Text>
+        <Text style={styles.footerText}>{t('landing.footerText')}</Text>
+        <Text style={styles.footerText}>{t('landing.support')}</Text>
         <View style={styles.footerLinks}>
           <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/privacy')}>
-            Política de Privacidade
+            {t('landing.privacyPolicy')}
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
           <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/terms')}>
-            Termos de Uso
+            {t('landing.termsOfService')}
           </Text>
           <Text style={styles.footerLinkSeparator}> • </Text>
           <Text style={styles.footerLink} onPress={() => handleOpenPolicy('/cookies')}>
-            Política de Cookies
+            {t('landing.cookiePolicy')}
           </Text>
         </View>
-        <Text style={styles.footerCopy}>© {new Date().getFullYear()} Elastiquality. Todos os direitos reservados.</Text>
+        <Text style={styles.footerCopy}>{t('landing.copyright', { year: new Date().getFullYear() })}</Text>
       </View>
     </ScrollView>
   );
@@ -218,22 +238,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     backgroundColor: colors.surfaceLight,
     borderRadius: 24,
     padding: 32,
     gap: 32,
   },
+  heroImageWrapper: {
+    flex: 0,
+    minWidth: 240,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
   heroText: {
     flex: 1,
     minWidth: 280,
     gap: 16,
-  },
-  heroImageWrapper: {
-    flex: 1,
-    minWidth: 240,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   heroImage: {
     width: 260,
@@ -259,6 +279,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ctaButton: {
     borderRadius: 999,

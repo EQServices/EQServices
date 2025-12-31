@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, Card, ActivityIndicator, Chip, Searchbar } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
@@ -18,6 +19,7 @@ interface User {
 }
 
 export const AdminUsersScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -72,7 +74,7 @@ export const AdminUsersScreen = ({ navigation }: any) => {
       <Card.Content>
         <View style={styles.userHeader}>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{item.nome_completo || 'Sem nome'}</Text>
+            <Text style={styles.userName}>{item.nome_completo || t('admin.users.noName')}</Text>
             <Text style={styles.userEmail}>{item.email}</Text>
           </View>
           <Chip
@@ -83,18 +85,18 @@ export const AdminUsersScreen = ({ navigation }: any) => {
             ]}
             textStyle={styles.chipText}
           >
-            {item.user_type === 'professional' ? 'Profissional' : 'Cliente'}
+            {item.user_type === 'professional' ? t('admin.users.professional') : t('admin.users.client')}
           </Chip>
         </View>
         {item.user_type === 'professional' && (
           <View style={styles.professionalInfo}>
-            <Text style={styles.infoText}>Créditos: {item.creditos || 0}</Text>
-            {item.avaliacao && <Text style={styles.infoText}>Avaliação: {item.avaliacao.toFixed(1)} ⭐</Text>}
+            <Text style={styles.infoText}>{t('admin.users.credits')} {item.creditos || 0}</Text>
+            {item.avaliacao && <Text style={styles.infoText}>{t('admin.users.rating')} {item.avaliacao.toFixed(1)} ⭐</Text>}
           </View>
         )}
-        {item.phone && <Text style={styles.infoText}>Telefone: {item.phone}</Text>}
-        {item.location_label && <Text style={styles.infoText}>Localização: {item.location_label}</Text>}
-        <Text style={styles.dateText}>Cadastrado em: {new Date(item.created_at).toLocaleDateString('pt-PT')}</Text>
+        {item.phone && <Text style={styles.infoText}>{t('admin.users.phone')} {item.phone}</Text>}
+        {item.location_label && <Text style={styles.infoText}>{t('admin.users.location')} {item.location_label}</Text>}
+        <Text style={styles.dateText}>{t('admin.users.registeredAt')} {new Date(item.created_at).toLocaleDateString()}</Text>
       </Card.Content>
     </Card>
   );
@@ -103,7 +105,7 @@ export const AdminUsersScreen = ({ navigation }: any) => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating={true} color={colors.primary} size="large" />
-        <Text style={styles.loadingText}>A carregar usuários...</Text>
+        <Text style={styles.loadingText}>{t('admin.users.loading')}</Text>
       </View>
     );
   }
@@ -111,7 +113,7 @@ export const AdminUsersScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <Searchbar
-        placeholder="Pesquisar usuários..."
+        placeholder={t('admin.users.search')}
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchbar}
@@ -124,7 +126,7 @@ export const AdminUsersScreen = ({ navigation }: any) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhum usuário encontrado</Text>
+            <Text style={styles.emptyText}>{t('admin.users.empty')}</Text>
           </View>
         }
       />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Avatar, Card, Chip, List, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { RouteProp } from '@react-navigation/native';
 import { colors } from '../../theme/colors';
 import { RatingStars } from '../../components/RatingStars';
@@ -18,8 +19,23 @@ interface ProfileScreenProps {
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
-  const professionalId = route.params?.professionalId ?? user?.id;
+  // Se professionalId não for fornecido, usar o ID do usuário logado apenas se ele for profissional
+  // Caso contrário, não carregar nada (para evitar mostrar perfil errado)
+  const professionalId = route.params?.professionalId || (user?.userType === 'professional' ? user?.id : undefined);
+  
+
+  
+  // Debug: Log para verificar qual ID está sendo usado
+  useEffect(() => {
+    console.log('[DEBUG Profile] route.params:', route.params);
+    console.log('[DEBUG Profile] professionalId from route:', route.params?.professionalId);
+    console.log('[DEBUG Profile] user?.id:', user?.id);
+    console.log('[DEBUG Profile] user?.userType:', user?.userType);
+    console.log('[DEBUG Profile] final professionalId:', professionalId);
+  }, [professionalId, route.params, user?.id, user?.userType]);
+  
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<{ average: number; count: number }>({ average: 0, count: 0 });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -28,6 +44,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const [regions, setRegions] = useState<string[]>([]);
   const [credits, setCredits] = useState<number>(0);
   const [portfolio, setPortfolio] = useState<string[]>([]);
+  const [professionalName, setProfessionalName] = useState<string | null>(null);
   const [reviews, setReviews] = useState<
     Array<{
       id: string;
@@ -41,12 +58,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   useEffect(() => {
     const load = async () => {
       if (!professionalId) {
+        console.warn('[DEBUG Profile] professionalId não fornecido, não carregando perfil');
         setLoading(false);
         return;
       }
       try {
         setLoading(true);
-        const [{ data: professionalData, error: professionalError }, summaryResult, reviewResult] = await Promise.all([
+        console.log('[DEBUG Profile] Carregando perfil do profissional:', professionalId);
+        const [
+          { data: userData, error: userError },
+          { data: professionalData, error: professionalError },
+          summaryResult,
+          reviewResult,
+        ] = await Promise.all([
+          supabase
+            .from('users')
+            .select('name')
+            .eq('id', professionalId)
+            .maybeSingle(),
           supabase
             .from('professionals')
             .select('avatar_url, description, categories, regions, credits, portfolio')
@@ -56,15 +85,49 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           listProfessionalReviews(professionalId),
         ]);
 
-        if (professionalError) throw professionalError;
+        // Log detalhado dos dados recebidos
+        console.log('[DEBUG Profile] userData:', userData);
+        console.log('[DEBUG Profile] userError:', userError);
+        console.log('[DEBUG Profile] professionalData:', professionalData);
+        console.log('[DEBUG Profile] professionalError:', professionalError);
+
+        if (userError) {
+          console.error('[DEBUG Profile] Erro ao buscar userData:', userError);
+          // Não lançar erro, apenas logar - pode ser problema de RLS
+        }
+        if (professionalError) {
+          console.error('[DEBUG Profile] Erro ao buscar professionalData:', professionalError);
+          // Não lançar erro, apenas logar - pode ser problema de RLS
+        }
+
+        // Definir o nome do profissional
+        if (userData?.name) {
+          setProfessionalName(userData.name);
+          console.log('[DEBUG Profile] Nome do profissional carregado da tabela users:', userData.name);
+        } else if (route.params?.professionalName) {
+          setProfessionalName(route.params.professionalName);
+          console.log('[DEBUG Profile] Usando nome dos params:', route.params.professionalName);
+        } else {
+          console.warn('[DEBUG Profile] Nome do profissional não encontrado nem na tabela users nem nos params');
+        }
 
         if (professionalData) {
+          console.log('[DEBUG Profile] Dados do profissional carregados:', {
+            avatar_url: professionalData.avatar_url,
+            description: professionalData.description,
+            categories: professionalData.categories,
+            regions: professionalData.regions,
+            credits: professionalData.credits,
+            portfolio: professionalData.portfolio,
+          });
           setAvatarUrl(professionalData.avatar_url ?? null);
           setDescription(professionalData.description ?? null);
           setCategories(Array.isArray(professionalData.categories) ? professionalData.categories : []);
           setRegions(Array.isArray(professionalData.regions) ? professionalData.regions : []);
           setCredits(professionalData.credits ?? 0);
           setPortfolio(Array.isArray(professionalData.portfolio) ? professionalData.portfolio : []);
+        } else {
+          console.warn('[DEBUG Profile] Dados do profissional não encontrados na tabela professionals');
         }
 
         setSummary(summaryResult);
@@ -91,7 +154,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating color={colors.professional} />
-        <Text style={styles.loaderText}>A carregar avaliações...</Text>
+        <Text style={styles.loaderText}>{t('profile.view.loading')}</Text>
       </View>
     );
   }
@@ -107,25 +170,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
               <Avatar.Icon size={80} icon="account" />
             )}
             <View style={styles.headerText}>
-              <Text style={styles.title}>{route.params?.professionalName || user?.name || 'Profissional'}</Text>
-              <Text style={styles.creditsLabel}>Saldo atual: {credits} moedas</Text>
+              <Text style={styles.title}>
+                {professionalName || route.params?.professionalName || (user?.userType === 'professional' && user?.id === professionalId ? user?.name : null) || t('auth.professional')}
+              </Text>
+              {/* Mostrar créditos apenas se for o próprio profissional visualizando seu perfil */}
+              {user?.userType === 'professional' && user?.id === professionalId && (
+                <Text style={styles.creditsLabel}>{t('profile.view.credits')}: {credits}</Text>
+              )}
             </View>
           </View>
           <View style={styles.ratingRow}>
             <RatingStars rating={summary.average} size={30} />
             <Text style={styles.averageText}>{summary.average.toFixed(1)} / 5</Text>
           </View>
-          <Text style={styles.totalReviews}>{summary.count} avaliações registradas</Text>
-          {description ? <Text style={styles.description}>{description}</Text> : null}
+          <Text style={styles.totalReviews}>
+            {summary.count === 1 
+              ? t('profile.view.totalReviews', { count: summary.count })
+              : t('profile.view.totalReviewsPlural', { count: summary.count })}
+          </Text>
+          {description ? <Text style={styles.description}>{description}</Text> : <Text style={styles.description}>{t('profile.view.noDescription')}</Text>}
         </Card.Content>
       </Card>
 
       <Card style={styles.infoCard}>
         <Card.Content style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Categorias de atuação</Text>
+          <Text style={styles.sectionTitle}>{t('profile.view.categories')}</Text>
           <View style={styles.chipGroup}>
             {categories.length === 0 ? (
-              <Text style={styles.emptyText}>Nenhuma categoria informada.</Text>
+              <Text style={styles.emptyText}>{t('profile.view.noCategories')}</Text>
             ) : (
               categories.map((category) => (
                 <Chip key={category} mode="outlined" style={styles.infoChip}>
@@ -135,10 +207,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
             )}
           </View>
 
-          <Text style={styles.sectionTitle}>Zonas de atendimento</Text>
+          <Text style={styles.sectionTitle}>{t('profile.view.regions')}</Text>
           <View style={styles.chipGroup}>
             {regions.length === 0 ? (
-              <Text style={styles.emptyText}>Nenhuma região informada.</Text>
+              <Text style={styles.emptyText}>{t('profile.view.noRegions')}</Text>
             ) : (
               regions.map((region) => (
                 <Chip key={region} mode="outlined" style={styles.infoChip}>
@@ -153,7 +225,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
       {portfolio.length > 0 ? (
         <Card style={styles.infoCard}>
           <Card.Content style={{ gap: 12 }}>
-            <Text style={styles.sectionTitle}>Portfólio</Text>
+            <Text style={styles.sectionTitle}>{t('profile.view.portfolio')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.portfolioRow}>
               {portfolio.map((item) => (
                 <Avatar.Image
@@ -170,9 +242,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
       <Card style={styles.reviewsCard}>
         <Card.Content>
-          <Text style={styles.sectionTitle}>Avaliações recentes</Text>
+          <Text style={styles.sectionTitle}>{t('profile.view.reviews')}</Text>
           {reviews.length === 0 ? (
-            <Text style={styles.emptyText}>Ainda não existem avaliações para este profissional.</Text>
+            <Text style={styles.emptyText}>{t('profile.view.noReviews')}</Text>
           ) : (
             reviews.map((review) => (
               <List.Item
@@ -180,13 +252,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
                 title={() => (
                   <View style={styles.reviewHeader}>
                     <RatingStars rating={review.rating} size={22} />
-                    <Text style={styles.reviewClient}>{review.clientName || 'Cliente'}</Text>
+                    <Text style={styles.reviewClient}>{review.clientName || t('auth.client')}</Text>
                     <Text style={styles.reviewDate}>
-                      {new Date(review.createdAt).toLocaleDateString('pt-PT', { dateStyle: 'medium' })}
+                      {new Date(review.createdAt).toLocaleDateString()}
                     </Text>
                   </View>
                 )}
-                description={review.comment || 'Sem comentários adicionais.'}
+                description={review.comment || t('profile.view.noDescription')}
                 descriptionNumberOfLines={4}
               />
             ))

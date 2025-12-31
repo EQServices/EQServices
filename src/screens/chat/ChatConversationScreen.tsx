@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { ActivityIndicator, Button, Card, IconButton, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../config/supabase';
 import {
   ensureConversation,
   fetchConversation,
@@ -39,6 +41,7 @@ interface ChatConversationScreenProps {
 }
 
 export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(route.params.conversationId ?? null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,7 +73,7 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
         }
       } catch (err) {
         console.error('Erro ao garantir conversa:', err);
-        alert('Não foi possível iniciar a conversa.');
+        alert(t('chat.conversation.error'));
         navigation.goBack();
       } finally {
         setLoading(false);
@@ -84,12 +87,14 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
     route.params.clientId,
     route.params.professionalId,
     route.params.serviceRequestId,
+    t,
   ]);
 
   useEffect(() => {
     if (!conversationId || !user?.id) return;
 
     let unsubscribe: (() => void) | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
 
     const load = async () => {
       try {
@@ -100,38 +105,81 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
         ]);
 
         if (conversation && !route.params.title) {
-          const otherParticipant = conversation.participants.find((participant) => participant.userId !== user.id);
-          navigation.setOptions({ title: otherParticipant?.displayName ?? 'Conversa' });
+          // Priorizar título do pedido de serviço, depois nome do participante, depois "Conversa"
+          const title = conversation.serviceRequestTitle 
+            ?? conversation.participants.find((participant) => participant.userId !== user.id)?.displayName 
+            ?? t('chat.conversation.title');
+          navigation.setOptions({ title });
         }
 
         setMessages(initialMessages);
         await markMessagesAsRead(conversationId, user.id);
 
         unsubscribe = subscribeToMessages(conversationId, async (payload) => {
-          const newMessageRow = payload.new;
-          const newMessage: Message = {
-            id: newMessageRow.id,
-            conversationId: newMessageRow.conversation_id,
-            senderId: newMessageRow.sender_id,
-            content: newMessageRow.content,
-            mediaUrl: newMessageRow.media_url ?? null,
-            mediaType: newMessageRow.media_type ?? null,
-            metadata: newMessageRow.metadata ?? null,
-            createdAt: newMessageRow.created_at,
-            readBy: newMessageRow.read_by ?? [],
-          };
-
-          setMessages((prev) => {
-            if (prev.find((msg) => msg.id === newMessage.id)) {
-              return prev;
+          try {
+            const newMessageRow = payload.new;
+            
+            // Buscar informações do sender se não vierem no payload
+            let senderInfo = newMessageRow.sender;
+            if (!senderInfo && newMessageRow.sender_id) {
+              try {
+                const { data: senderData } = await supabase
+                  .from('users')
+                  .select('id, name')
+                  .eq('id', newMessageRow.sender_id)
+                  .single();
+                
+                if (senderData) {
+                  senderInfo = { id: senderData.id, name: senderData.name };
+                }
+              } catch (err) {
+                console.warn('[Chat] Erro ao buscar sender:', err);
+              }
             }
-            return [...prev, newMessage];
-          });
+            
+            const newMessage: Message = {
+              id: newMessageRow.id,
+              conversationId: newMessageRow.conversation_id,
+              senderId: newMessageRow.sender_id,
+              content: newMessageRow.content,
+              mediaUrl: newMessageRow.media_url ?? null,
+              mediaType: newMessageRow.media_type ?? null,
+              metadata: newMessageRow.metadata ?? null,
+              createdAt: newMessageRow.created_at,
+              readBy: newMessageRow.read_by ?? [],
+              sender: senderInfo,
+            };
 
-          if (newMessage.senderId !== user.id) {
-            await markMessagesAsRead(conversationId, user.id);
+            setMessages((prev) => {
+              // Verificar se a mensagem já existe para evitar duplicatas
+              const exists = prev.find((msg) => msg.id === newMessage.id);
+              if (exists) {
+                return prev;
+              }
+              // Adicionar nova mensagem e ordenar por data
+              const updated = [...prev, newMessage];
+              return updated.sort((a, b) => 
+                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              );
+            });
+
+            if (newMessage.senderId !== user.id) {
+              await markMessagesAsRead(conversationId, user.id);
+            }
+          } catch (err) {
+            console.error('[Chat] Erro ao processar nova mensagem:', err);
           }
         });
+        
+        // Fallback: recarregar mensagens periodicamente (a cada 10 segundos) caso o realtime falhe
+        pollInterval = setInterval(async () => {
+          try {
+            const latestMessages = await fetchMessages(conversationId, 50);
+            setMessages(latestMessages);
+          } catch (err) {
+            console.warn('Erro ao recarregar mensagens:', err);
+          }
+        }, 10000); // 10 segundos para não sobrecarregar
       } catch (err) {
         console.error('Erro ao carregar conversa:', err);
       } finally {
@@ -143,8 +191,9 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
 
     return () => {
       if (unsubscribe) unsubscribe();
+      if (pollInterval) clearInterval(pollInterval);
     };
-  }, [conversationId, navigation, route.params.title, user?.id]);
+  }, [conversationId, navigation, route.params.title, user?.id, route.params.professionalId, route.params.serviceRequestId, t]);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -185,10 +234,10 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
       });
       setInput('');
       inputRef.current?.focus();
-      await notifyRecipient(conversationId, messageText.slice(0, 120) || 'Nova mensagem no chat');
+      await notifyRecipient(conversationId, messageText.slice(0, 120) || t('chat.list.newMessage'));
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err);
-      alert(err instanceof Error ? err.message : 'Não foi possível enviar a mensagem.');
+      alert(err instanceof Error ? err.message : t('chat.conversation.sendError'));
     } finally {
       setSending(false);
     }
@@ -203,8 +252,8 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permissão necessária',
-          'Precisamos de acesso às suas fotos para enviar imagens no chat. Ative a permissão nas definições.',
+          t('profile.edit.permissionRequired'),
+          t('chat.conversation.permissionMessage'),
         );
         return;
       }
@@ -221,7 +270,7 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
 
       const asset = result.assets[0];
       if (!asset.uri) {
-        throw new Error('Não foi possível obter o ficheiro selecionado.');
+        throw new Error(t('chat.conversation.sendError'));
       }
 
       const upload = await uploadChatImage(conversationId, asset.uri);
@@ -236,14 +285,14 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
       });
 
       setInput('');
-      await notifyRecipient(conversationId, messageText || '📷 Nova foto enviada');
+      await notifyRecipient(conversationId, messageText || t('chat.list.photo'));
     } catch (err) {
       console.error('Erro ao enviar imagem:', err);
-      alert(err instanceof Error ? err.message : 'Não foi possível enviar a imagem.');
+      alert(err instanceof Error ? err.message : t('chat.conversation.sendError'));
     } finally {
       setUploadingImage(false);
     }
-  }, [conversationId, input, notifyRecipient, user?.id]);
+  }, [conversationId, input, notifyRecipient, user?.id, t]);
 
   if (loading && messages.length === 0) {
     return (
@@ -262,8 +311,8 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.messagesContainer}>
         {messages.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyTitle}>Comece a conversa</Text>
-            <Text style={styles.emptySubtitle}>Envie a primeira mensagem para alinhar detalhes do serviço.</Text>
+            <Text style={styles.emptyTitle}>{t('chat.conversation.startConversation')}</Text>
+            <Text style={styles.emptySubtitle}>{t('chat.conversation.startSubtitle')}</Text>
           </View>
         ) : (
           messages.map((message) => {
@@ -281,7 +330,7 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
                       </Text>
                     ) : null}
                     <Text style={[styles.messageTimestamp, isMine ? styles.timestampMine : styles.timestampTheirs]}>
-                      {new Date(message.createdAt).toLocaleTimeString('pt-PT', {
+                      {new Date(message.createdAt).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
@@ -306,7 +355,7 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
         <TextInput
           ref={inputRef}
           mode="outlined"
-          placeholder="Escreva uma mensagem"
+          placeholder={t('chat.conversation.typeMessage')}
           value={input}
           onChangeText={setInput}
           multiline
@@ -318,7 +367,7 @@ export const ChatConversationScreen: React.FC<ChatConversationScreenProps> = ({ 
           loading={sending}
           disabled={sending || !input.trim()}
         >
-          Enviar
+          {t('chat.conversation.send')}
         </Button>
       </View>
     </KeyboardAvoidingView>

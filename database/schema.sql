@@ -194,8 +194,10 @@ $$ LANGUAGE plpgsql;
 
 -- Inserir pacotes de créditos padrão
 INSERT INTO public.credit_packages (name, credits, price, discount) VALUES
-  ('Pacote Básico', 50, 90.00, 0),
-  ('Pacote Premium', 100, 80.00, 20)
+  ('Pacote Inicial', 20, 19.00, 5),
+  ('Pacote Básico', 50, 45.00, 10),
+  ('Pacote Premium', 100, 80.00, 20),
+  ('Pay as you go', 1, 1.00, 0)
 ON CONFLICT DO NOTHING;
 
 -- Habilitar Row Level Security (RLS)

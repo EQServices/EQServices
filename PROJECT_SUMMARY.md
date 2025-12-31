@@ -113,23 +113,26 @@ elastiquality/
 └── PROJECT_SUMMARY.md          # Este arquivo
 ```
 
-## 🎯 Categorias de Serviços
+## 🎯 Categorias de Serviços (Custo em Moedas - Máximo 10)
 
-1. Reformas e Construção (50 moedas)
-2. Eletricista (15 moedas)
-3. Canalizador (15 moedas)
-4. Pintura (20 moedas)
-5. Limpeza (10 moedas)
-6. Jardinagem (12 moedas)
-7. Mudanças (25 moedas)
-8. Assistência Técnica (15 moedas)
-9. Aulas Particulares (8 moedas)
-10. Cuidados Pessoais (10 moedas)
-11. Eventos (40 moedas)
-12. Fotografia (30 moedas)
-13. Design (35 moedas)
-14. Consultoria (45 moedas)
-15. Outros (15 moedas)
+1. Reformas e Construção (10 moedas) - Máximo
+2. Consultoria (9 moedas)
+3. Mudanças/Transporte (8 moedas)
+4. Eventos (7 moedas)
+5. Serviço Automóvel (7 moedas)
+6. Design/Fotografia (7 moedas)
+7. Tecnologia e Informática (6 moedas)
+8. Saúde e Bem-Estar (6 moedas)
+9. Pintura (4 moedas)
+10. Beleza e Estética (4 moedas)
+11. Eletricista (3 moedas)
+12. Canalizador (3 moedas)
+13. Assistência Técnica (3 moedas)
+14. Limpeza (3 moedas)
+15. Jardinagem (3 moedas)
+16. Aulas Particulares (3 moedas)
+17. Cuidados Pessoais (3 moedas)
+18. Outros (3 moedas)
 
 ## 💶 Modelo de Negócio
 
@@ -148,10 +151,10 @@ elastiquality/
 - ✅ Constrói reputação
 
 ### Pacotes de Créditos
-- **Pacote Básico**: 50 moedas por €90.00
+- **Pacote Inicial**: 20 moedas por €19.00 (5% desconto)
+- **Pacote Básico**: 50 moedas por €45.00 (10% desconto)
 - **Pacote Premium**: 100 moedas por €80.00 (20% desconto)
 - **Unidade**: €1.00 por moeda
-- **Validade**: 3 meses
 
 ## 🚀 Como Executar
 
@@ -266,7 +269,7 @@ accent: '#0288D1'         // Azul
 
 ## 📞 Suporte e Contato
 
-- **Email**: suporte@elastiquality.pt
+- **Email**: suporte@eqservices.pt
 - **Website**: www.elastiquality.pt
 - **Documentação**: docs.elastiquality.pt
 

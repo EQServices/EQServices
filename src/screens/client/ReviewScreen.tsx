@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
@@ -19,6 +20,7 @@ interface ReviewScreenProps {
 }
 
 export const ReviewScreen: React.FC<ReviewScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -27,12 +29,12 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ navigation, route })
 
   const handleSubmit = async () => {
     if (!user?.id) {
-      setError('Sessão inválida. Faça login novamente.');
+      setError(t('review.invalidSession'));
       return;
     }
 
     if (rating === 0) {
-      setError('Selecione uma avaliação entre 1 e 5 estrelas.');
+      setError(t('review.selectRatingError'));
       return;
     }
 
@@ -53,7 +55,7 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ navigation, route })
         merge: true,
       });
     } catch (err: any) {
-      setError(err.message || 'Não foi possível enviar a avaliação.');
+      setError(err.message || t('review.submitError'));
     } finally {
       setLoading(false);
     }
@@ -63,27 +65,29 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ navigation, route })
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={styles.cardContent}>
-          <Text style={styles.title}>Avaliar profissional</Text>
+          <Text style={styles.title}>{t('review.title')}</Text>
           <Text style={styles.subtitle}>
-            Conte-nos como foi sua experiência com{' '}
-            <Text style={styles.highlight}>{route.params.professionalName || 'o profissional'}</Text>. Sua
-            avaliação ajuda outros clientes a decidirem com quem trabalhar.
+            {t('review.subtitle')}{' '}
+            <Text style={styles.highlight}>{route.params.professionalName || t('review.professional')}</Text>
+            {t('review.subtitleEnd')}
           </Text>
 
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingLabel}>Qualidade do serviço</Text>
+            <Text style={styles.ratingLabel}>{t('review.serviceQuality')}</Text>
             <RatingStars rating={rating} readOnly={false} onChange={setRating} size={36} />
-            <Text style={styles.helperText}>{rating > 0 ? `${rating} de 5` : 'Toque nas estrelas para avaliar'}</Text>
+            <Text style={styles.helperText}>
+              {rating > 0 ? t('review.ratingOf', { rating }) : t('review.selectRating')}
+            </Text>
           </View>
 
           <TextInput
             mode="outlined"
-            label="Comentário (opcional)"
+            label={t('review.comment')}
             value={comment}
             onChangeText={setComment}
             multiline
             numberOfLines={5}
-            placeholder="Descreva o que mais gostou ou algo que poderia melhorar."
+            placeholder={t('review.commentPlaceholder')}
             style={styles.input}
           />
 
@@ -97,7 +101,7 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ navigation, route })
             style={styles.button}
             buttonColor={colors.primary}
           >
-            Enviar avaliação
+            {t('review.submit')}
           </Button>
         </Card.Content>
       </Card>

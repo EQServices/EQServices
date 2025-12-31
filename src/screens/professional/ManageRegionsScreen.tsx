@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Chip, HelperText, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../config/supabase';
 import { colors } from '../../theme/colors';
@@ -8,6 +9,7 @@ import { LocationPicker } from '../../components/LocationPicker';
 import { LocationSelection, formatLocationSelection } from '../../services/locations';
 
 export const ManageRegionsScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,30 +40,30 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
         setError(null);
       } catch (err: any) {
         console.error('Erro ao carregar regiões de atendimento:', err);
-        setError(err.message || 'Não foi possível carregar as regiões.');
+        setError(err.message || t('manageRegions.loadingError'));
       } finally {
         setLoading(false);
       }
     };
 
     loadRegions();
-  }, [user?.id]);
+  }, [user?.id, t]);
 
   const handleAddRegion = () => {
     const label = formatLocationSelection(selection);
 
     if (!selection.districtId) {
-      setSelectionError('Selecione pelo menos o distrito.');
+      setSelectionError(t('manageRegions.selectDistrict'));
       return;
     }
 
     if (!label) {
-      setSelectionError('Seleção incompleta. Escolha distrito, concelho e freguesia se disponível.');
+      setSelectionError(t('manageRegions.incompleteSelection'));
       return;
     }
 
     if (regions.includes(label)) {
-      setSelectionError('Esta zona de atendimento já foi adicionada.');
+      setSelectionError(t('manageRegions.alreadyAdded'));
       return;
     }
 
@@ -78,7 +80,7 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
     if (!user?.id) return;
 
     if (regions.length === 0) {
-      setError('Adicione pelo menos uma zona de atendimento.');
+      setError(t('manageRegions.addAtLeastOne'));
       return;
     }
 
@@ -97,11 +99,11 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
 
       if (updateError) throw updateError;
 
-      alert('Zonas de atendimento atualizadas com sucesso!');
+      alert(t('manageRegions.saveSuccess'));
       navigation.goBack();
     } catch (err: any) {
       console.error('Erro ao atualizar regiões:', err);
-      setError(err.message || 'Não foi possível atualizar as regiões.');
+      setError(err.message || t('manageRegions.saveError'));
     } finally {
       setSaving(false);
     }
@@ -111,13 +113,13 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={{ gap: 16 }}>
-          <Text style={styles.title}>Zonas de atendimento</Text>
+          <Text style={styles.title}>{t('manageRegions.title')}</Text>
           <Text style={styles.subtitle}>
-            Adicione os locais onde pode prestar serviços. Pode especificar até ao nível de freguesia.
+            {t('manageRegions.subtitle')}
           </Text>
 
           {loading ? (
-            <Text style={styles.loading}>A carregar zonas de atendimento...</Text>
+            <Text style={styles.loading}>{t('common.loading')}</Text>
           ) : (
             <>
               <LocationPicker
@@ -128,7 +130,7 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
                 }}
                 error={selectionError || undefined}
                 mode="district"
-                caption="Pesquise pelo distrito onde presta serviços e clique em adicionar."
+                caption={t('manageRegions.caption')}
               />
               <Button
                 mode="outlined"
@@ -137,12 +139,12 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
                 style={styles.addButton}
                 textColor={colors.professional}
               >
-                Adicionar zona
+                {t('manageRegions.add')}
               </Button>
 
               <View style={styles.chipGroup}>
                 {regions.length === 0 ? (
-                  <Text style={styles.emptyText}>Ainda não adicionou zonas de atendimento.</Text>
+                  <Text style={styles.emptyText}>{t('manageRegions.empty')}</Text>
                 ) : (
                   regions.map((region) => (
                     <Chip key={region} onPress={() => handleRemoveRegion(region)} mode="outlined" style={styles.chip}>
@@ -161,7 +163,7 @@ export const ManageRegionsScreen = ({ navigation }: any) => {
                 style={styles.saveButton}
                 buttonColor={colors.professional}
               >
-                Guardar zonas de atendimento
+                {t('manageRegions.save')}
               </Button>
             </>
           )}

@@ -69,7 +69,7 @@ const sendEmailNotification = async (email: string, subject: string, body: strin
       Authorization: `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: 'Elastiquality <notifications@elastiquality.pt>',
+      from: 'EQServices <notifications@eqservices.pt>',
       to: [email],
       subject,
       html: `<p>${body}</p>`,

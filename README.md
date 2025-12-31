@@ -157,8 +157,9 @@ npm run ios
 - Cada lead tem um custo em moedas
 - Créditos expiram em 3 meses
 - Pacotes disponíveis:
-  - 50 moedas por €90.00
-  - 100 moedas por €80.00
+  - 20 moedas por €19.00 (5% desconto)
+  - 50 moedas por €45.00 (10% desconto)
+  - 100 moedas por €80.00 (20% desconto)
 
 ## 🎨 Cores da Marca
 

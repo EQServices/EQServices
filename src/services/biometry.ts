@@ -1,6 +1,10 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Alert } from 'react-native';
+
+// Na web, SecureStore não funciona, então usamos AsyncStorage
+const isWeb = Platform.OS === 'web';
 
 export interface BiometryType {
   available: boolean;
@@ -21,6 +25,11 @@ const BIOMETRY_ENABLED_KEY = 'biometry_enabled';
  */
 export const isBiometryAvailable = async (): Promise<boolean> => {
   try {
+    // Na web, biometria não está disponível
+    if (isWeb) {
+      return false;
+    }
+
     const compatible = await LocalAuthentication.hasHardwareAsync();
     if (!compatible) {
       return false;
@@ -130,7 +139,11 @@ export const saveCredentialsSecurely = async (
     };
 
     const credentialsJson = JSON.stringify(credentials);
-    await SecureStore.setItemAsync(CREDENTIALS_KEY, credentialsJson);
+    if (isWeb) {
+      await AsyncStorage.setItem(CREDENTIALS_KEY, credentialsJson);
+    } else {
+      await SecureStore.setItemAsync(CREDENTIALS_KEY, credentialsJson);
+    }
     return true;
   } catch (error) {
     console.error('Erro ao salvar credenciais:', error);
@@ -143,7 +156,13 @@ export const saveCredentialsSecurely = async (
  */
 export const getSavedCredentials = async (): Promise<SavedCredentials | null> => {
   try {
-    const credentialsJson = await SecureStore.getItemAsync(CREDENTIALS_KEY);
+    let credentialsJson: string | null;
+    if (isWeb) {
+      credentialsJson = await AsyncStorage.getItem(CREDENTIALS_KEY);
+    } else {
+      credentialsJson = await SecureStore.getItemAsync(CREDENTIALS_KEY);
+    }
+    
     if (!credentialsJson) {
       return null;
     }
@@ -161,7 +180,11 @@ export const getSavedCredentials = async (): Promise<SavedCredentials | null> =>
  */
 export const clearSavedCredentials = async (): Promise<boolean> => {
   try {
-    await SecureStore.deleteItemAsync(CREDENTIALS_KEY);
+    if (isWeb) {
+      await AsyncStorage.removeItem(CREDENTIALS_KEY);
+    } else {
+      await SecureStore.deleteItemAsync(CREDENTIALS_KEY);
+    }
     return true;
   } catch (error) {
     console.error('Erro ao remover credenciais:', error);
@@ -186,7 +209,12 @@ export const hasSavedCredentials = async (): Promise<boolean> => {
  */
 export const setBiometryEnabled = async (enabled: boolean): Promise<boolean> => {
   try {
-    await SecureStore.setItemAsync(BIOMETRY_ENABLED_KEY, enabled ? 'true' : 'false');
+    const value = enabled ? 'true' : 'false';
+    if (isWeb) {
+      await AsyncStorage.setItem(BIOMETRY_ENABLED_KEY, value);
+    } else {
+      await SecureStore.setItemAsync(BIOMETRY_ENABLED_KEY, value);
+    }
     return true;
   } catch (error) {
     console.error('Erro ao configurar biometria:', error);
@@ -199,7 +227,12 @@ export const setBiometryEnabled = async (enabled: boolean): Promise<boolean> => 
  */
 export const isBiometryEnabled = async (): Promise<boolean> => {
   try {
-    const value = await SecureStore.getItemAsync(BIOMETRY_ENABLED_KEY);
+    let value: string | null;
+    if (isWeb) {
+      value = await AsyncStorage.getItem(BIOMETRY_ENABLED_KEY);
+    } else {
+      value = await SecureStore.getItemAsync(BIOMETRY_ENABLED_KEY);
+    }
     return value === 'true';
   } catch (error) {
     return false;

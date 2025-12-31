@@ -197,7 +197,7 @@ npm start -- --clear
 ## 📞 Suporte
 
 Para dúvidas ou problemas:
-- Email: suporte@elastiquality.pt
+- Email: suporte@eqservices.pt
 - Documentação: [docs.elastiquality.pt](https://docs.elastiquality.pt)
 
 ## 🔐 Segurança

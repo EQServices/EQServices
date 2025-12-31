@@ -150,3 +150,22 @@ export const notifyProposalSubmitted = async (payload: NotifyProposalPayload) =>
   });
 };
 
+export interface NotifyProposalAcceptedPayload {
+  professionalId: string;
+  clientName: string;
+  serviceTitle: string;
+  serviceRequestId: string;
+}
+
+export const notifyProposalAccepted = async (payload: NotifyProposalAcceptedPayload) => {
+  await notifyEvent({
+    recipientId: payload.professionalId,
+    title: `Sua proposta foi aceita!`,
+    body: `${payload.clientName} aceitou sua proposta para "${payload.serviceTitle}". Entre em contato para alinhar os próximos passos.`,
+    type: 'proposals',
+    data: {
+      serviceRequestId: payload.serviceRequestId,
+    },
+  });
+};
+

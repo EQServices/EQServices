@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, Card, Chip, HelperText, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../config/supabase';
 import { colors } from '../../theme/colors';
@@ -13,10 +14,8 @@ import { useRequireUserType } from '../../hooks/useRequireUserType';
 
 const MAX_PORTFOLIO_ITEMS = 10;
 
-const CONFIRM_LOGOUT_MESSAGE =
-  'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
-
 export const ManageProfileScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { isValid } = useRequireUserType('professional');
   const { user, updateUserContext, signOut } = useAuth();
   
@@ -63,11 +62,11 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       setError(null);
     } catch (err: any) {
       console.error('Erro ao carregar perfil profissional:', err);
-      setError(err.message || 'Não foi possível carregar os dados do perfil.');
+      setError(err.message || t('manageProfile.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,17 +75,17 @@ export const ManageProfileScreen = ({ navigation }: any) => {
   );
 
   const handleLogout = () => {
-    Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('manageProfile.logout'), t('manageProfile.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Terminar sessão',
+        text: t('manageProfile.logout'),
         style: 'destructive',
         onPress: async () => {
           try {
             await signOut();
           } catch (err) {
             console.error('Erro ao terminar sessão:', err);
-            Alert.alert('Erro', 'Não foi possível terminar a sessão. Tente novamente.');
+            Alert.alert(t('common.error'), t('manageProfile.logoutError'));
           }
         },
       },
@@ -97,8 +96,8 @@ export const ManageProfileScreen = ({ navigation }: any) => {
     const { status } = await ImagePickerLib.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permissão necessária',
-        'Precisa conceder acesso às fotos para escolher um avatar. Verifique as permissões nas definições do dispositivo.',
+        t('manageProfile.permissionRequired'),
+        t('manageProfile.permissionMessage'),
       );
       return;
     }
@@ -133,12 +132,12 @@ export const ManageProfileScreen = ({ navigation }: any) => {
     if (!user?.id) return;
 
     if (selectedServices.length === 0) {
-      setError('Defina pelo menos uma categoria na opção "Gerir categorias".');
+      setError(t('manageProfile.categoriesError'));
       return;
     }
 
     if (selectedRegions.length === 0) {
-      setError('Adicione pelo menos uma zona de atendimento em "Gerir zonas de atendimento".');
+      setError(t('manageProfile.regionsError'));
       return;
     }
 
@@ -147,7 +146,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       setError(null);
 
       if (portfolioItems.length > MAX_PORTFOLIO_ITEMS) {
-        throw new Error(`Limite máximo de ${MAX_PORTFOLIO_ITEMS} itens de portfólio atingido.`);
+        throw new Error(t('manageProfile.portfolioLimit', { max: MAX_PORTFOLIO_ITEMS }));
       }
 
       const existingPortfolio = portfolioItems.filter((item) => !item.local).map((item) => item.uri);
@@ -193,10 +192,10 @@ export const ManageProfileScreen = ({ navigation }: any) => {
       updateUserContext({
         avatarUrl: finalAvatarUrl ?? undefined,
       });
-      alert('Descrição e portfólio atualizados com sucesso!');
+      alert(t('manageProfile.saveSuccess'));
     } catch (err: any) {
       console.error('Erro ao atualizar perfil profissional:', err);
-      setError(err.message || 'Não foi possível atualizar o perfil.');
+      setError(err.message || t('manageProfile.saveError'));
     } finally {
       setSaving(false);
     }
@@ -211,10 +210,10 @@ export const ManageProfileScreen = ({ navigation }: any) => {
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={{ gap: 16 }}>
-          <Text style={styles.title}>Gestão do Perfil Profissional</Text>
+          <Text style={styles.title}>{t('manageProfile.title')}</Text>
 
           {loading ? (
-            <Text style={styles.loading}>A carregar dados...</Text>
+            <Text style={styles.loading}>{t('manageProfile.loading')}</Text>
           ) : (
             <>
               <View style={styles.avatarSection}>
@@ -230,20 +229,20 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                     textColor={colors.professional}
                     style={styles.sectionButton}
                   >
-                    Alterar avatar
+                    {t('manageProfile.selectAvatar')}
                   </Button>
                   {avatarPreview || avatarUrl ? (
                     <Button mode="text" onPress={handleRemoveAvatar} textColor={colors.error}>
-                      Remover avatar
+                      {t('manageProfile.removeAvatar')}
                     </Button>
                   ) : null}
                 </View>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Dados pessoais</Text>
+                <Text style={styles.sectionTitle}>{t('profile.edit.personalInfo')}</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Mantenha os seus dados de contacto atualizados para facilitar a comunicação com clientes.
+                  {t('manageProfile.personalDataSubtitle')}
                 </Text>
                 <Button
                   mode="outlined"
@@ -251,18 +250,18 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   textColor={colors.professional}
                   style={styles.sectionButton}
                 >
-                  Editar dados pessoais
+                  {t('profile.edit.title')}
                 </Button>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Categorias de atuação</Text>
+                <Text style={styles.sectionTitle}>{t('manageCategories.title')}</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Estas categorias definem os leads que serão sugeridos para si.
+                  {t('manageProfile.categoriesSubtitle')}
                 </Text>
                 <View style={styles.chipGroup}>
                   {selectedServices.length === 0 ? (
-                    <Text style={styles.emptyText}>Nenhuma categoria definida.</Text>
+                    <Text style={styles.emptyText}>{t('manageProfile.noCategories')}</Text>
                   ) : (
                     selectedServices.map((service) => (
                       <Chip key={service} style={styles.chipSelected} textStyle={styles.chipTextSelected}>
@@ -277,18 +276,18 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   textColor={colors.professional}
                   style={styles.sectionButton}
                 >
-                  Gerir categorias
+                  {t('manageProfile.manageCategories')}
                 </Button>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Zonas de atendimento</Text>
+                <Text style={styles.sectionTitle}>{t('manageRegions.title')}</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Reveja as localizações onde está disponível para prestar serviços.
+                  {t('manageProfile.regionsSubtitle')}
                 </Text>
                 <View style={styles.chipGroup}>
                   {selectedRegions.length === 0 ? (
-                    <Text style={styles.emptyText}>Nenhuma zona de atendimento definida.</Text>
+                    <Text style={styles.emptyText}>{t('manageProfile.noRegions')}</Text>
                   ) : (
                     selectedRegions.map((region) => (
                       <Chip key={region} mode="outlined" style={styles.regionChip}>
@@ -303,27 +302,27 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   textColor={colors.professional}
                   style={styles.sectionButton}
                 >
-                  Gerir zonas de atendimento
+                  {t('manageProfile.manageRegions')}
                 </Button>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Descrição profissional</Text>
+                <Text style={styles.sectionTitle}>{t('manageProfile.description')}</Text>
                 <TextInput
                   mode="outlined"
                   multiline
                   numberOfLines={5}
                   value={description}
                   onChangeText={setDescription}
-                  placeholder="Fale sobre a sua experiência, certificações e diferenciais."
+                  placeholder={t('manageProfile.descriptionPlaceholder')}
                   style={styles.textInput}
                 />
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Portfólio</Text>
+                <Text style={styles.sectionTitle}>{t('manageProfile.portfolio')}</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Adicione imagens recentes dos seus trabalhos (máximo de {MAX_PORTFOLIO_ITEMS} itens).
+                  {t('manageProfile.portfolioSubtitle', { max: MAX_PORTFOLIO_ITEMS })}
                 </Text>
                 <ImagePicker
                   images={portfolioItems}
@@ -335,15 +334,15 @@ export const ManageProfileScreen = ({ navigation }: any) => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Créditos disponíveis</Text>
-                <Text style={styles.creditsValue}>{credits} moedas</Text>
+                <Text style={styles.sectionTitle}>{t('professional.credits')}</Text>
+                <Text style={styles.creditsValue}>{t('manageProfile.credits', { credits })}</Text>
                 <Button
                   mode="outlined"
                   onPress={() => navigation.navigate('BuyCredits')}
                   textColor={colors.professional}
                   style={styles.buyCreditsButton}
                 >
-                  Comprar mais créditos
+                  {t('professional.buyCredits')}
                 </Button>
                 <Button
                   mode="outlined"
@@ -351,7 +350,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   textColor={colors.professional}
                   style={styles.viewProfileButton}
                 >
-                  Ver perfil público
+                  {t('manageProfile.viewPublicProfile')}
                 </Button>
                 <Button
                   mode="outlined"
@@ -359,7 +358,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   textColor={colors.professional}
                   style={styles.viewProfileButton}
                 >
-                  Preferências de notificações
+                  {t('notifications.title')}
                 </Button>
               </View>
 
@@ -374,7 +373,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                   buttonColor={colors.professional}
                   style={styles.saveButton}
                 >
-                  Guardar descrição e portfólio
+                  {t('manageProfile.save')}
                 </Button>
               </View>
 
@@ -385,7 +384,7 @@ export const ManageProfileScreen = ({ navigation }: any) => {
                 textColor={colors.error}
                 style={styles.logoutButton}
               >
-                Terminar sessão
+                {t('manageProfile.logout')}
               </Button>
             </>
           )}

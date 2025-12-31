@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Alert, Platform } from 'react-native';
 import { Text, Card, FAB, Chip, Button, Avatar, IconButton } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { ServiceRequest } from '../../types';
@@ -14,8 +16,10 @@ const CONFIRM_LOGOUT_MESSAGE =
 
 export const ClientHomeScreen = ({ navigation }: any) => {
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -56,7 +60,8 @@ export const ClientHomeScreen = ({ navigation }: any) => {
     return {
       id: row.id,
       clientId: row.client_id,
-      category: row.category,
+      categories: row.categories || (row.category ? [row.category] : []),
+      category: row.categories?.[0] || row.category,
       title: row.title,
       description: row.description,
       location: row.location,
@@ -65,6 +70,7 @@ export const ClientHomeScreen = ({ navigation }: any) => {
       status: row.status,
       completedAt: row.completed_at ?? null,
       createdAt: row.created_at,
+      referenceNumber: row.reference_number ?? undefined,
     };
   }, []);
 
@@ -101,6 +107,64 @@ export const ClientHomeScreen = ({ navigation }: any) => {
     loadRequests();
   }, [loadRequests]);
 
+  // Recarregar quando voltar para esta tela (após excluir pedido, por exemplo)
+  const loadUnreadCount = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Buscar service_requests do cliente primeiro
+      const { data: serviceRequests } = await supabase
+        .from('service_requests')
+        .select('id')
+        .eq('client_id', user.id);
+
+      if (!serviceRequests || serviceRequests.length === 0) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const serviceRequestIds = serviceRequests.map((sr) => sr.id);
+
+      // Contar propostas pendentes não visualizadas
+      const { count: proposalsCount } = await supabase
+        .from('proposals')
+        .select('*', { count: 'exact', head: true })
+        .in('service_request_id', serviceRequestIds)
+        .eq('status', 'pending');
+
+      // Contar mensagens não lidas em conversas do cliente
+      const { data: conversations } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id)
+        .eq('role', 'client');
+
+      let messagesCount = 0;
+      if (conversations && conversations.length > 0) {
+        const conversationIds = conversations.map((c) => c.conversation_id);
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .in('conversation_id', conversationIds)
+          .neq('sender_id', user.id)
+          .not('read_by', 'cs', `{${user.id}}`);
+
+        messagesCount = count || 0;
+      }
+
+      setUnreadCount((proposalsCount || 0) + messagesCount);
+    } catch (error) {
+      console.error('Erro ao carregar contagem de não lidas:', error);
+    }
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRequests();
+      loadUnreadCount();
+    }, [loadRequests, loadUnreadCount])
+  );
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -119,13 +183,13 @@ export const ClientHomeScreen = ({ navigation }: any) => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Aguardando';
+        return t('client.requestDetail.status.pending');
       case 'active':
-        return 'Ativo';
+        return t('client.requestDetail.status.active');
       case 'completed':
-        return 'Concluído';
+        return t('client.requestDetail.status.completed');
       case 'cancelled':
-        return 'Cancelado';
+        return t('client.requestDetail.status.cancelled');
       default:
         return status;
     }
@@ -138,7 +202,14 @@ export const ClientHomeScreen = ({ navigation }: any) => {
     >
       <Card.Content>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            {item.referenceNumber && (
+              <Chip mode="outlined" style={styles.referenceChip} textStyle={styles.referenceChipText}>
+                {item.referenceNumber}
+              </Chip>
+            )}
+          </View>
           <Chip
             style={{ backgroundColor: getStatusColor(item.status) }}
             textStyle={{ color: colors.textLight }}
@@ -165,13 +236,29 @@ export const ClientHomeScreen = ({ navigation }: any) => {
           <View style={styles.logoWrapper}>
             <AppLogo size={150} withBackground />
           </View>
-          <IconButton
-            icon="logout"
-            iconColor={colors.textLight}
-            size={24}
-            onPress={handleLogout}
-            style={styles.logoutButton}
-          />
+          <View style={styles.headerRightButtons}>
+            <View style={styles.notificationButtonContainer}>
+              <IconButton
+                icon="bell"
+                iconColor={colors.textLight}
+                size={24}
+                onPress={() => navigation.navigate('Notifications')}
+                style={styles.notificationButton}
+              />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
+            <IconButton
+              icon="logout"
+              iconColor={colors.textLight}
+              size={24}
+              onPress={handleLogout}
+              style={styles.logoutButton}
+            />
+          </View>
         </View>
         <View style={styles.headerTop}>
           {user?.avatarUrl ? (
@@ -180,8 +267,8 @@ export const ClientHomeScreen = ({ navigation }: any) => {
             <Avatar.Icon size={64} icon="account" />
           )}
           <View style={styles.headerInfo}>
-            <Text style={styles.welcomeText}>Olá, {user?.name}!</Text>
-            <Text style={styles.subtitle}>Seus pedidos de serviço</Text>
+            <Text style={styles.welcomeText}>{t('common.hello')}, {user?.name}!</Text>
+            <Text style={styles.subtitle}>{t('client.home.title')}</Text>
           </View>
         </View>
         <View style={styles.actionButtons}>
@@ -234,12 +321,12 @@ export const ClientHomeScreen = ({ navigation }: any) => {
       ) : requests.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Avatar.Icon size={72} icon="clipboard-text-outline" style={styles.emptyIcon} />
-          <Text style={styles.emptyText}>Nenhum pedido por aqui ainda</Text>
+          <Text style={styles.emptyText}>{t('client.home.empty')}</Text>
           <Text style={styles.emptySubtext}>
-            Publique seu primeiro pedido e receba propostas de profissionais qualificados.
+            {t('client.home.emptySubtext')}
           </Text>
           <Button mode="contained" icon="plus" onPress={() => navigation.navigate('NewServiceRequest')}>
-            Criar novo pedido
+            {t('client.home.createRequest')}
           </Button>
         </View>
       ) : (
@@ -316,11 +403,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    flex: 1,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
-    flex: 1,
+  },
+  referenceChip: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+  },
+  referenceChipText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '600',
   },
   category: {
     fontSize: 14,

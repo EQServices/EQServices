@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Chip, HelperText, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../config/supabase';
 import { colors } from '../../theme/colors';
@@ -8,6 +9,7 @@ import { SERVICE_CATEGORY_GROUPS } from '../../constants/categories';
 import { ALL_SERVICES } from '../../constants/categories';
 
 export const ManageCategoriesScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,14 +44,14 @@ export const ManageCategoriesScreen = ({ navigation }: any) => {
         setError(null);
       } catch (err: any) {
         console.error('Erro ao carregar categorias:', err);
-        setError(err.message || 'Não foi possível carregar as categorias.');
+        setError(err.message || t('manageCategories.loadingError'));
       } finally {
         setLoading(false);
       }
     };
 
     loadCategories();
-  }, [user?.id]);
+  }, [user?.id, t]);
 
   const toggleCategory = (category: string) => {
     setSelectedCategories((prev) =>
@@ -61,7 +63,7 @@ export const ManageCategoriesScreen = ({ navigation }: any) => {
     if (!user?.id) return;
 
     if (selectedCategories.length === 0) {
-      setError('Selecione pelo menos uma categoria de atuação.');
+      setError(t('manageCategories.selectAtLeastOne'));
       return;
     }
 
@@ -78,11 +80,11 @@ export const ManageCategoriesScreen = ({ navigation }: any) => {
 
       if (updateError) throw updateError;
 
-      alert('Categorias atualizadas com sucesso!');
+      alert(t('manageCategories.saveSuccess'));
       navigation.goBack();
     } catch (err: any) {
       console.error('Erro ao atualizar categorias:', err);
-      setError(err.message || 'Não foi possível atualizar as categorias.');
+      setError(err.message || t('manageCategories.saveError'));
     } finally {
       setSaving(false);
     }
@@ -92,14 +94,13 @@ export const ManageCategoriesScreen = ({ navigation }: any) => {
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
         <Card.Content style={{ gap: 16 }}>
-          <Text style={styles.title}>Categorias de atuação</Text>
+          <Text style={styles.title}>{t('manageCategories.title')}</Text>
           <Text style={styles.subtitle}>
-            Selecione os serviços que deseja oferecer. Estas categorias serão utilizadas para sugerir leads
-            relevantes.
+            {t('manageCategories.subtitle')}
           </Text>
 
           {loading ? (
-            <Text style={styles.loading}>A carregar categorias...</Text>
+            <Text style={styles.loading}>{t('common.loading')}</Text>
           ) : (
             <>
               <View style={styles.groupsContainer}>
@@ -131,7 +132,7 @@ export const ManageCategoriesScreen = ({ navigation }: any) => {
                 style={styles.saveButton}
                 buttonColor={colors.professional}
               >
-                Guardar categorias
+                {t('manageCategories.save')}
               </Button>
             </>
           )}

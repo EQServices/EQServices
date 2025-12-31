@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { ActivityIndicator, Card, List, Text } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
@@ -18,6 +19,7 @@ interface TransactionSummary {
 
 interface LeadSummary {
   id: string;
+  leadId: string;
   category?: string | null;
   cost: number;
   location?: string | null;
@@ -29,9 +31,13 @@ interface ProposalSummary {
   id: string;
   status: string;
   createdAt: string;
+  serviceRequestId?: string;
+  serviceRequestTitle?: string;
+  serviceRequestStatus?: string;
 }
 
 export const ProfessionalDashboardScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { user, isValid } = useRequireUserType('professional');
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState(0);
@@ -77,9 +83,11 @@ export const ProfessionalDashboardScreen: React.FC = () => {
             .select(
               `
               id,
+              lead_id,
               cost,
-              created_at,
+              unlocked_at,
               lead:leads (
+                id,
                 category,
                 location,
                 description
@@ -87,11 +95,21 @@ export const ProfessionalDashboardScreen: React.FC = () => {
             `,
             )
             .eq('professional_id', user.id)
-            .order('created_at', { ascending: false })
+            .order('unlocked_at', { ascending: false })
             .limit(10),
           supabase
             .from('proposals')
-            .select('id,status,created_at')
+            .select(`
+              id,
+              status,
+              created_at,
+              service_request_id,
+              service_requests:service_request_id (
+                id,
+                title,
+                status
+              )
+            `)
             .eq('professional_id', user.id),
         ]);
 
@@ -113,11 +131,12 @@ export const ProfessionalDashboardScreen: React.FC = () => {
 
         const normalizedLeads: LeadSummary[] = (unlockedData ?? []).map((item: any) => ({
           id: item.id,
+          leadId: item.lead_id,
           category: item.lead?.category,
           cost: item.cost,
           location: item.lead?.location,
           description: item.lead?.description,
-          createdAt: item.created_at,
+          createdAt: item.unlocked_at || item.created_at, // Usar unlocked_at, fallback para created_at se existir
         }));
         setLeadsUnlocked(normalizedLeads);
 
@@ -125,6 +144,9 @@ export const ProfessionalDashboardScreen: React.FC = () => {
           id: item.id,
           status: item.status,
           createdAt: item.created_at,
+          serviceRequestId: item.service_request_id,
+          serviceRequestTitle: item.service_requests?.title,
+          serviceRequestStatus: item.service_requests?.status,
         }));
         setProposals(normalizedProposals);
 
@@ -255,21 +277,68 @@ export const ProfessionalDashboardScreen: React.FC = () => {
 
       <Card style={styles.sectionCard}>
         <Card.Content>
+          <Text style={styles.sectionTitle}>Pedidos aceitos</Text>
+          {proposals.filter((p) => p.status === 'accepted').length === 0 ? (
+            <Text style={styles.emptyText}>Ainda não tem pedidos aceitos.</Text>
+          ) : (
+            proposals
+              .filter((p) => p.status === 'accepted')
+              .slice(0, 5)
+              .map((proposal) => (
+                <TouchableOpacity
+                  key={proposal.id}
+                  onPress={() => {
+                    if (proposal.serviceRequestId) {
+                      // Buscar o lead associado ao service_request
+                      supabase
+                        .from('leads')
+                        .select('id')
+                        .eq('service_request_id', proposal.serviceRequestId)
+                        .maybeSingle()
+                        .then(({ data: leadData }) => {
+                          if (leadData) {
+                            navigation.navigate('LeadDetail' as never, { leadId: leadData.id } as never);
+                          }
+                        });
+                    }
+                  }}
+                >
+                  <List.Item
+                    title={proposal.serviceRequestTitle || 'Pedido aceito'}
+                    description={`Status: ${proposal.serviceRequestStatus || 'active'}\nAceito em ${new Date(proposal.createdAt).toLocaleString('pt-PT')}`}
+                    left={(props) => <List.Icon {...props} icon="check-circle" color={colors.success} />}
+                    right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                  />
+                </TouchableOpacity>
+              ))
+          )}
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.sectionCard}>
+        <Card.Content>
           <Text style={styles.sectionTitle}>Leads desbloqueados recentemente</Text>
           {leadsUnlocked.length === 0 ? (
             <Text style={styles.emptyText}>Ainda não desbloqueou leads.</Text>
           ) : (
             leadsUnlocked.map((lead) => (
-              <List.Item
+              <TouchableOpacity
                 key={lead.id}
-                title={`${lead.category || 'Serviço'} — ${lead.cost} moedas`}
-                description={
-                  lead.location
-                    ? `${lead.location}\n${new Date(lead.createdAt).toLocaleString('pt-PT')}`
-                    : new Date(lead.createdAt).toLocaleString('pt-PT')
-                }
-                left={(props) => <List.Icon {...props} icon="briefcase" />}
-              />
+                onPress={() => {
+                  navigation.navigate('LeadDetail' as never, { leadId: lead.leadId } as never);
+                }}
+              >
+                <List.Item
+                  title={`${lead.category || 'Serviço'} — ${lead.cost} moedas`}
+                  description={
+                    lead.location
+                      ? `${lead.location}\n${new Date(lead.createdAt).toLocaleString('pt-PT')}`
+                      : new Date(lead.createdAt).toLocaleString('pt-PT')
+                  }
+                  left={(props) => <List.Icon {...props} icon="briefcase" />}
+                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                />
+              </TouchableOpacity>
             ))
           )}
         </Card.Content>

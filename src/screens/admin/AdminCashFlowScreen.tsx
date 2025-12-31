@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, ActivityIndicator, DataTable } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
@@ -22,6 +23,7 @@ interface MonthlyFinancial {
 }
 
 export const AdminCashFlowScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
   const [monthlyFinancial, setMonthlyFinancial] = useState<MonthlyFinancial[]>([]);
@@ -74,7 +76,7 @@ export const AdminCashFlowScreen = ({ navigation }: any) => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating={true} color={colors.primary} size="large" />
-        <Text style={styles.loadingText}>A carregar dados financeiros...</Text>
+        <Text style={styles.loadingText}>{t('admin.cashFlow.loading')}</Text>
       </View>
     );
   }
@@ -86,14 +88,14 @@ export const AdminCashFlowScreen = ({ navigation }: any) => {
     >
       {/* Resumo Geral */}
       <Card style={styles.card}>
-        <Card.Title title="Resumo Financeiro" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.cashFlow.summary.title')} titleStyle={styles.cardTitle} />
         <Card.Content>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Receita Total:</Text>
+            <Text style={styles.summaryLabel}>{t('admin.cashFlow.summary.totalRevenue')}</Text>
             <Text style={styles.summaryValue}>€{totalReceita.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total de Transações:</Text>
+            <Text style={styles.summaryLabel}>{t('admin.cashFlow.summary.totalTransactions')}</Text>
             <Text style={styles.summaryValue}>{totalTransacoes}</Text>
           </View>
         </Card.Content>
@@ -101,13 +103,13 @@ export const AdminCashFlowScreen = ({ navigation }: any) => {
 
       {/* Fluxo de Caixa Detalhado */}
       <Card style={styles.card}>
-        <Card.Title title="Fluxo de Caixa Detalhado" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.cashFlow.detailed.title')} titleStyle={styles.cardTitle} />
         <Card.Content>
           <DataTable>
             <DataTable.Header>
-              <DataTable.Title>Tipo</DataTable.Title>
-              <DataTable.Title numeric>Quantidade</DataTable.Title>
-              <DataTable.Title numeric>Valor Total</DataTable.Title>
+              <DataTable.Title>{t('admin.cashFlow.detailed.type')}</DataTable.Title>
+              <DataTable.Title numeric>{t('admin.cashFlow.detailed.quantity')}</DataTable.Title>
+              <DataTable.Title numeric>{t('admin.cashFlow.detailed.totalValue')}</DataTable.Title>
             </DataTable.Header>
             {cashFlow.map((item, index) => (
               <DataTable.Row key={index}>
@@ -122,17 +124,17 @@ export const AdminCashFlowScreen = ({ navigation }: any) => {
 
       {/* Resumo Mensal */}
       <Card style={styles.card}>
-        <Card.Title title="Resumo Mensal (Últimos 12 meses)" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.cashFlow.monthly.title')} titleStyle={styles.cardTitle} />
         <Card.Content>
           <DataTable>
             <DataTable.Header>
-              <DataTable.Title>Mês</DataTable.Title>
-              <DataTable.Title numeric>Compras</DataTable.Title>
-              <DataTable.Title numeric>Receita</DataTable.Title>
+              <DataTable.Title>{t('admin.cashFlow.monthly.month')}</DataTable.Title>
+              <DataTable.Title numeric>{t('admin.cashFlow.monthly.purchases')}</DataTable.Title>
+              <DataTable.Title numeric>{t('admin.cashFlow.monthly.revenue')}</DataTable.Title>
             </DataTable.Header>
             {monthlyFinancial.map((item, index) => (
               <DataTable.Row key={index}>
-                <DataTable.Cell>{new Date(item.mes).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</DataTable.Cell>
+                <DataTable.Cell>{new Date(item.mes).toLocaleDateString([], { month: 'long', year: 'numeric' })}</DataTable.Cell>
                 <DataTable.Cell numeric>{item.compras_realizadas}</DataTable.Cell>
                 <DataTable.Cell numeric>€{item.receita_total.toFixed(2)}</DataTable.Cell>
               </DataTable.Row>

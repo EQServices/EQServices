@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable, Linking, Alert } from 'react-native';
 import { TextInput, Button, Text, Card, useTheme, Checkbox, Divider, Dialog, Portal } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { AppLogo } from '../components/AppLogo';
 import { useThemedStyles } from '../theme/useThemedStyles';
@@ -8,6 +9,7 @@ import { useBiometry } from '../hooks/useBiometry';
 import { sendPasswordResetEmail } from '../services/emailVerification';
 
 export const LoginScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -123,7 +125,7 @@ export const LoginScreen = ({ navigation }: any) => {
         try {
           setBiometricLoading(true);
           const credentials = await authenticateBiometry(
-            `Use ${biometryType.name} para fazer login`,
+            t('auth.signInWithBiometry', { biometry: biometryType.name }),
           );
 
           if (credentials) {
@@ -144,7 +146,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Por favor, preencha todos os campos');
+      setError(t('auth.fillAllFields'));
       return;
     }
 
@@ -159,7 +161,7 @@ export const LoginScreen = ({ navigation }: any) => {
         await saveCredentials(email, password);
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      setError(err.message || t('auth.loginError'));
     } finally {
       setLoading(false);
     }
@@ -167,7 +169,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleBiometricLogin = async () => {
     if (!biometryAvailable || !hasCredentials) {
-      setError('Biometria não disponível ou nenhuma credencial salva.');
+      setError(t('auth.biometricUnavailable'));
       return;
     }
 
@@ -176,14 +178,14 @@ export const LoginScreen = ({ navigation }: any) => {
 
     try {
       const credentials = await authenticateBiometry(
-        `Use ${biometryType.name} para fazer login`,
+        t('auth.signInWithBiometry', { biometry: biometryType.name }),
       );
 
       if (credentials) {
         await signIn(credentials.email, credentials.password);
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login biométrico');
+      setError(err.message || t('auth.biometricError'));
     } finally {
       setBiometricLoading(false);
     }
@@ -191,7 +193,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleForgotPassword = async () => {
     if (!resetEmail.trim()) {
-      Alert.alert('Erro', 'Por favor, informe seu email');
+      Alert.alert(t('common.error'), t('auth.provideEmail'));
       return;
     }
 
@@ -200,11 +202,11 @@ export const LoginScreen = ({ navigation }: any) => {
       const result = await sendPasswordResetEmail(resetEmail.trim());
       if (result.success) {
         Alert.alert(
-          'Email enviado',
-          'Verifique sua caixa de entrada. Enviamos um link para redefinir sua senha.',
+          t('auth.resetEmailSent'),
+          t('auth.resetEmailMessage'),
           [
             {
-              text: 'OK',
+              text: t('common.ok'),
               onPress: () => {
                 setShowForgotPassword(false);
                 setResetEmail('');
@@ -213,10 +215,10 @@ export const LoginScreen = ({ navigation }: any) => {
           ],
         );
       } else {
-        Alert.alert('Erro', result.error || 'Não foi possível enviar o email de recuperação');
+        Alert.alert(t('common.error'), result.error || t('auth.resetEmailError'));
       }
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Erro ao enviar email de recuperação');
+      Alert.alert(t('common.error'), err.message || t('auth.resetEmailError'));
     } finally {
       setResetLoading(false);
     }
@@ -242,15 +244,15 @@ export const LoginScreen = ({ navigation }: any) => {
           style={styles.logoContainer}
         >
           <AppLogo size={200} withBackground />
-          <Text style={styles.subtitle}>Conectando clientes a profissionais</Text>
+          <Text style={styles.subtitle}>{t('auth.connecting')}</Text>
         </Pressable>
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text style={styles.cardTitle}>Entrar</Text>
+            <Text style={styles.cardTitle}>{t('auth.enter')}</Text>
 
             <TextInput
-              label="Email"
+              label={t('auth.email')}
               value={email}
               onChangeText={setEmail}
               mode="outlined"
@@ -260,7 +262,7 @@ export const LoginScreen = ({ navigation }: any) => {
             />
 
             <TextInput
-              label="Senha"
+              label={t('auth.password')}
               value={password}
               onChangeText={setPassword}
               mode="outlined"
@@ -277,7 +279,7 @@ export const LoginScreen = ({ navigation }: any) => {
               style={styles.forgotPasswordButton}
               textColor={theme.colors.primary}
             >
-              Esqueceu a senha?
+              {t('auth.forgotPassword')}
             </Button>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -293,11 +295,11 @@ export const LoginScreen = ({ navigation }: any) => {
                   style={styles.button}
                   icon={biometryType.type === 'FACIAL_RECOGNITION' ? 'face-recognition' : 'fingerprint'}
                 >
-                  Entrar com {biometryType.name}
+                  {t('auth.signInWithBiometry', { biometry: biometryType.name })}
                 </Button>
                 <View style={styles.dividerContainer}>
                   <Divider style={styles.divider} />
-                  <Text style={styles.dividerText}>ou</Text>
+                  <Text style={styles.dividerText}>{t('auth.or')}</Text>
                   <Divider style={styles.divider} />
                 </View>
               </>
@@ -311,7 +313,7 @@ export const LoginScreen = ({ navigation }: any) => {
               style={styles.button}
               buttonColor={theme.colors.primary}
             >
-              Entrar
+              {t('auth.signIn')}
             </Button>
 
             {/* Checkbox "Lembrar-me" */}
@@ -322,7 +324,7 @@ export const LoginScreen = ({ navigation }: any) => {
                   onPress={() => setRememberMe(!rememberMe)}
                 />
                 <Text style={styles.checkboxLabel}>
-                  Lembrar-me (usar {biometryType.name} no próximo login)
+                  {t('auth.rememberMe')} ({t('common.use')} {biometryType.name} {t('auth.nextLogin')})
                 </Text>
               </View>
             )}
@@ -332,20 +334,20 @@ export const LoginScreen = ({ navigation }: any) => {
               onPress={() => navigation.navigate('Register')}
               style={styles.linkButton}
             >
-              Não tem conta? Cadastre-se
+              {t('auth.noAccount')} {t('auth.register')}
             </Button>
           </Card.Content>
         </Card>
 
         <Portal>
           <Dialog visible={showForgotPassword} onDismiss={() => setShowForgotPassword(false)}>
-            <Dialog.Title>Recuperar senha</Dialog.Title>
+            <Dialog.Title>{t('auth.resetPassword')}</Dialog.Title>
             <Dialog.Content>
               <Text style={{ marginBottom: 16 }}>
-                Informe seu email e enviaremos um link para redefinir sua senha.
+                {t('auth.resetEmailMessage')}
               </Text>
               <TextInput
-                label="Email"
+                label={t('auth.email')}
                 value={resetEmail}
                 onChangeText={setResetEmail}
                 mode="outlined"
@@ -355,9 +357,9 @@ export const LoginScreen = ({ navigation }: any) => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setShowForgotPassword(false)}>Cancelar</Button>
+              <Button onPress={() => setShowForgotPassword(false)}>{t('common.cancel')}</Button>
               <Button onPress={handleForgotPassword} loading={resetLoading} disabled={resetLoading}>
-                Enviar
+                {t('common.submit')}
               </Button>
             </Dialog.Actions>
           </Dialog>

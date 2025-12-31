@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, Alert, Platform } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, Divider, List, Text } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../theme/colors';
 import { Proposal, Review, ServiceRequest } from '../../types';
 import { supabase } from '../../config/supabase';
 import { ensureConversation } from '../../services/chat';
 import { useAuth } from '../../contexts/AuthContext';
+import { notifyProposalAccepted } from '../../services/notifications';
 import { RatingStars } from '../../components/RatingStars';
 import {
   getClientReviewForRequest,
@@ -18,6 +20,7 @@ import { ShareButton } from '../../components/ShareButton';
 import { getCurrentLocation } from '../../services/geolocation';
 import { searchNearbyProfessionals, ProfessionalWithDistance } from '../../services/professionals';
 import { calculateDistance, formatDistance } from '../../services/geolocation';
+import { removeCache } from '../../services/offlineCache';
 
 interface ServiceRequestDetailScreenProps {
   navigation: any;
@@ -31,7 +34,8 @@ interface ServiceRequestDetailScreenProps {
 const mapServiceRequest = (row: any): ServiceRequest => ({
   id: row.id,
   clientId: row.client_id,
-  category: row.category,
+  categories: row.categories || (row.category ? [row.category] : []), // Suporta tanto categories[] quanto category (legado)
+  category: row.categories?.[0] || row.category, // Mantido para compatibilidade
   title: row.title,
   description: row.description,
   location: row.location,
@@ -40,23 +44,43 @@ const mapServiceRequest = (row: any): ServiceRequest => ({
   status: row.status,
   completedAt: row.completed_at ?? null,
   createdAt: row.created_at,
+  referenceNumber: row.reference_number ?? undefined,
 });
 
-const mapProposal = (row: any): Proposal => ({
-  id: row.id,
-  serviceRequestId: row.service_request_id,
-  professionalId: row.professional_id,
-  price: Number(row.price),
-  description: row.description,
-  estimatedDuration: row.estimated_duration ?? undefined,
-  status: row.status,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at ?? undefined,
-  professionalName:
-    row.professional?.users?.name ??
-    row.professional?.name ??
-    undefined,
-});
+const mapProposal = (row: any): Proposal => {
+  // Tentar diferentes caminhos para obter o nome do profissional
+  // A query agora busca users diretamente através da foreign key
+  const professionalName = 
+    row.users?.name ||
+    row.professionals?.users?.name ||
+    row.professionals?.name ||
+    row.professional?.users?.name ||
+    row.professional?.name ||
+    undefined;
+
+  // Converter price para número, tratando casos de null/undefined/string
+  let price = 0;
+  if (row.price != null) {
+    if (typeof row.price === 'string') {
+      price = parseFloat(row.price) || 0;
+    } else if (typeof row.price === 'number') {
+      price = row.price;
+    }
+  }
+
+  return {
+    id: row.id,
+    serviceRequestId: row.service_request_id,
+    professionalId: row.professional_id,
+    price,
+    description: row.description || '',
+    estimatedDuration: row.estimated_duration ?? undefined,
+    status: row.status || 'pending',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? undefined,
+    professionalName,
+  };
+};
 
 const statusChipColor = (status: string) => {
   switch (status) {
@@ -73,23 +97,11 @@ const statusChipColor = (status: string) => {
   }
 };
 
-const statusChipText = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'Aguardando';
-    case 'active':
-      return 'Ativo';
-    case 'completed':
-      return 'Concluído';
-    case 'cancelled':
-      return 'Cancelado';
-    default:
-      return status;
-  }
-};
+// Esta função será substituída pelo uso direto de t() no componente
 
 export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProps> = ({ navigation, route }) => {
   const { requestId } = route.params;
+  const { t } = useTranslation();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [ratingSummaries, setRatingSummaries] = useState<Record<string, ReviewSummary>>({});
@@ -110,7 +122,7 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
           <ShareButton
             serviceRequestId={request.id}
             title={request.title}
-            category={request.category}
+            category={request.categories?.[0] || request.category || ''}
             location={request.location}
             variant="icon"
           />
@@ -152,7 +164,16 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
           supabase.from('service_requests').select('*').eq('id', requestId).single(),
           supabase
             .from('proposals')
-            .select('*, professional:professional_id(id, name, users(name))')
+            .select(`
+              *,
+              professionals!proposals_professional_id_fkey(
+                id,
+                users!professionals_id_fkey(
+                  id,
+                  name
+                )
+              )
+            `)
             .eq('service_request_id', requestId)
             .order('created_at', { ascending: false }),
         ]);
@@ -169,7 +190,24 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
         console.warn('Erro ao carregar propostas:', proposalsError);
       }
 
-      const mappedProposals = (proposalsData || []).map(mapProposal);
+      // Debug: Log dos dados brutos
+      console.log('[DEBUG Propostas] Dados brutos recebidos:', proposalsData);
+      console.log('[DEBUG Propostas] Número de propostas:', proposalsData?.length || 0);
+
+      const mappedProposals = (proposalsData || []).map((row: any) => {
+        console.log('[DEBUG Propostas] Mapeando proposta:', {
+          id: row.id,
+          price: row.price,
+          priceType: typeof row.price,
+          description: row.description,
+          status: row.status,
+          professional_id: row.professional_id,
+          professionals: row.professionals,
+        });
+        return mapProposal(row);
+      });
+      
+      console.log('[DEBUG Propostas] Propostas mapeadas:', mappedProposals);
       setProposals(mappedProposals);
 
       if (mappedProposals.length > 0) {
@@ -230,6 +268,18 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
     [proposals],
   );
 
+  // Debug: Log para verificar condições de edição
+  useEffect(() => {
+    if (request) {
+      console.log('[DEBUG Edit] isOwner:', isOwner);
+      console.log('[DEBUG Edit] request.status:', request.status);
+      console.log('[DEBUG Edit] user.id:', user?.id);
+      console.log('[DEBUG Edit] request.clientId:', request.clientId);
+      console.log('[DEBUG Edit] proposals com accepted:', proposals.some((p) => p.status === 'accepted'));
+      console.log('[DEBUG Edit] Pode editar?', isOwner && request.status === 'pending' && !proposals.some((p) => p.status === 'accepted'));
+    }
+  }, [isOwner, request, proposals, user?.id]);
+
   const filteredProposals = useMemo(() => {
     if (!ratingFilter) {
       return proposals;
@@ -252,6 +302,12 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
   };
 
   const handleViewProfile = (proposal: Proposal) => {
+    console.log('[DEBUG ViewProfile] Navegando para perfil do profissional:', {
+      proposalId: proposal.id,
+      professionalId: proposal.professionalId,
+      professionalName: proposal.professionalName,
+      proposal: proposal,
+    });
     navigation.navigate('ProfessionalProfile', {
       professionalId: proposal.professionalId,
       professionalName: proposal.professionalName,
@@ -293,7 +349,63 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
 
         if (updateRequestError) throw updateRequestError;
 
-        alert('Proposta aceite! Entre em contacto com o profissional para alinharem os próximos passos.');
+        // Enviar notificação ao profissional
+        if (user?.name && request) {
+          try {
+            await notifyProposalAccepted({
+              professionalId: proposal.professionalId,
+              clientName: user.name,
+              serviceTitle: request.title,
+              serviceRequestId: requestId,
+            });
+          } catch (notifyError) {
+            console.warn('Erro ao enviar notificação ao profissional:', notifyError);
+            // Não bloquear o fluxo se a notificação falhar
+          }
+        }
+
+        // Atualizar estado local imediatamente para refletir mudanças na UI
+        setProposals((prev) => {
+          return prev.map((p) => {
+            if (p.id === proposal.id) {
+              return { ...p, status: 'accepted' };
+            } else if (p.serviceRequestId === requestId && p.status === 'pending') {
+              return { ...p, status: 'rejected' };
+            }
+            return p;
+          });
+        });
+        
+        if (request) {
+          setRequest({ ...request, status: 'active' });
+        }
+
+        // Recarregar dados em background (sem bloquear)
+        loadData().catch((err) => {
+          console.warn('Erro ao recarregar dados após aceitar proposta:', err);
+        });
+
+        // Pequeno delay para garantir que a UI atualize antes de redirecionar
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Redirecionar para o chat com o profissional
+        try {
+          const conversationId = await ensureConversation(requestId, user!.id, proposal.professionalId);
+          if (tabNavigator?.navigate) {
+            tabNavigator.navigate('ClientChat', {
+              screen: 'ChatConversation',
+              params: {
+                conversationId,
+              },
+            });
+          } else {
+            navigation.navigate('ChatConversation', { conversationId });
+          }
+        } catch (chatError) {
+          console.warn('Erro ao abrir chat:', chatError);
+          // Se falhar ao abrir o chat, apenas mostrar mensagem
+          alert('Proposta aceite! Entre em contacto com o profissional para alinharem os próximos passos.');
+        }
       } else {
         const { error: rejectError } = await supabase
           .from('proposals')
@@ -303,14 +415,103 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
         if (rejectError) throw rejectError;
 
         alert('Proposta rejeitada.');
+        await loadData();
       }
-
-      await loadData();
     } catch (actionErr: any) {
       console.error('Erro ao atualizar proposta:', actionErr);
       alert(actionErr.message || 'Não foi possível atualizar a proposta.');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!isOwner || !request) {
+      Alert.alert(t('common.error'), t('client.requestDetail.notOwner'));
+      return;
+    }
+
+    // Verificar se pode excluir (apenas pedidos pendentes sem propostas aceitas)
+    if (request.status !== 'pending') {
+      Alert.alert(t('common.error'), t('client.requestDetail.cannotDeleteNotPending'));
+      return;
+    }
+
+    const hasAcceptedProposals = proposals.some((p) => p.status === 'accepted');
+    if (hasAcceptedProposals) {
+      Alert.alert(t('common.error'), t('client.requestDetail.cannotDeleteWithAcceptedProposals'));
+      return;
+    }
+
+    // Confirmar exclusão
+    const confirmed = Platform.OS === 'web' 
+      ? window.confirm(t('client.requestDetail.deleteConfirm'))
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            t('client.requestDetail.deleteTitle'),
+            t('client.requestDetail.deleteConfirm'),
+            [
+              { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+              { text: t('client.requestDetail.delete'), style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      setCompleting(true);
+
+      // Excluir leads associados primeiro (devido à foreign key)
+      // Nota: Leads serão excluídos automaticamente via CASCADE, mas vamos excluir explicitamente para garantir
+      const { error: deleteLeadsError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('service_request_id', request.id);
+
+      if (deleteLeadsError) {
+        console.warn('Erro ao excluir leads associados:', deleteLeadsError);
+        // Continuar mesmo se houver erro ao excluir leads (CASCADE vai cuidar disso)
+      }
+
+      // Excluir o pedido
+      // Nota: O CASCADE vai excluir automaticamente leads, propostas, avaliações, etc.
+      const { error: deleteError } = await supabase
+        .from('service_requests')
+        .delete()
+        .eq('id', request.id)
+        .eq('client_id', user.id);
+
+      if (deleteError) {
+        console.error('Erro detalhado ao excluir pedido:', deleteError);
+        throw deleteError;
+      }
+
+      // Limpar cache para forçar recarregamento da lista
+      if (user?.id) {
+        try {
+          await removeCache(`client_requests_${user.id}`);
+        } catch (cacheError) {
+          console.warn('Erro ao limpar cache:', cacheError);
+        }
+      }
+
+      if (Platform.OS === 'web') {
+        window.alert(t('client.requestDetail.deleteSuccess'));
+      } else {
+        Alert.alert(t('common.success'), t('client.requestDetail.deleteSuccess'));
+      }
+      navigation.goBack();
+    } catch (err: any) {
+      console.error('Erro ao excluir pedido:', err);
+      const errorMessage = err.message || t('client.requestDetail.deleteError');
+      if (Platform.OS === 'web') {
+        window.alert(errorMessage);
+      } else {
+        Alert.alert(t('common.error'), errorMessage);
+      }
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -375,13 +576,52 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
         <Card.Content>
           <View style={styles.header}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>{request.title}</Text>
-              <Text style={styles.category}>{request.category}</Text>
+              <View style={styles.titleRow}>
+                <Text style={styles.title}>{request.title}</Text>
+                {request.referenceNumber && (
+                  <Chip mode="outlined" style={styles.referenceChip} textStyle={styles.referenceChipText}>
+                    {request.referenceNumber}
+                  </Chip>
+                )}
+              </View>
+              <View style={styles.categoriesContainer}>
+                {(request.categories || (request.category ? [request.category] : [])).map((cat, index) => (
+                  <Chip key={index} style={styles.categoryChip} textStyle={styles.categoryChipText}>
+                    {cat}
+                  </Chip>
+                ))}
+              </View>
             </View>
             <Chip style={{ backgroundColor: statusChipColor(request.status) }} textStyle={{ color: colors.textLight }}>
-              {statusChipText(request.status)}
+              {t(`client.requestDetail.status.${request.status}`)}
             </Chip>
           </View>
+
+          {/* Botões de ação - só aparecem se for o dono */}
+          {isOwner && request.status === 'pending' && !proposals.some((p) => p.status === 'accepted') && (
+            <View style={styles.actionButtonsContainer}>
+              <Button
+                mode="outlined"
+                icon="pencil"
+                onPress={() => navigation.navigate('EditServiceRequest', { requestId: request.id })}
+                style={styles.editButton}
+                textColor={colors.primary}
+              >
+                Editar pedido
+              </Button>
+              <Button
+                mode="outlined"
+                icon="delete"
+                onPress={handleDeleteRequest}
+                style={styles.deleteButton}
+                textColor={colors.error}
+                loading={completing}
+                disabled={completing}
+              >
+                Excluir pedido
+              </Button>
+            </View>
+          )}
 
           <Divider style={styles.divider} />
 
@@ -423,6 +663,7 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
               </Text>
             </>
           ) : null}
+
         </Card.Content>
       </Card>
 
@@ -457,12 +698,24 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
             <List.Section>
               {filteredProposals.map((proposal) => {
                 const summary = ratingSummaries[proposal.professionalId];
+                console.log('[DEBUG Render] Renderizando proposta:', {
+                  id: proposal.id,
+                  price: proposal.price,
+                  priceType: typeof proposal.price,
+                  status: proposal.status,
+                  description: proposal.description,
+                  isOwner,
+                  requestStatus: request?.status,
+                  canShowActions: isOwner && request?.status !== 'completed',
+                });
                 return (
                 <Card key={proposal.id} style={styles.proposalCard}>
                   <Card.Content>
                     <View style={styles.proposalHeader}>
-                      <Text style={styles.proposalPrice}>€ {proposal.price.toFixed(2)}</Text>
-                      <Chip>{statusChipText(proposal.status)}</Chip>
+                      <Text style={styles.proposalPrice}>
+                        € {typeof proposal.price === 'number' && !isNaN(proposal.price) ? proposal.price.toFixed(2) : '0.00'}
+                      </Text>
+                      <Chip>{t(`client.requestDetail.status.${proposal.status}`)}</Chip>
                     </View>
                     {proposal.professionalName ? (
                       <Text style={styles.proposalMeta}>Profissional: {proposal.professionalName}</Text>
@@ -496,26 +749,34 @@ export const ServiceRequestDetailScreen: React.FC<ServiceRequestDetailScreenProp
 
                     {isOwner && request?.status !== 'completed' ? (
                       <View style={styles.actionsRow}>
-                        <Button
-                          mode="contained"
-                          buttonColor={colors.success}
-                          onPress={() => handleProposalAction(proposal, 'accept')}
-                          disabled={proposal.status === 'accepted' || actionLoading !== null}
-                          loading={actionLoading === proposal.id + 'accept'}
-                          style={styles.actionButton}
-                        >
-                          Aceitar
-                        </Button>
-                        <Button
-                          mode="outlined"
-                          textColor={colors.error}
-                          onPress={() => handleProposalAction(proposal, 'reject')}
-                          disabled={proposal.status !== 'pending' || actionLoading !== null}
-                          loading={actionLoading === proposal.id + 'reject'}
-                          style={styles.actionButton}
-                        >
-                          Rejeitar
-                        </Button>
+                        {proposal.status === 'pending' ? (
+                          <>
+                            <Button
+                              mode="contained"
+                              buttonColor={colors.success}
+                              onPress={() => handleProposalAction(proposal, 'accept')}
+                              disabled={actionLoading !== null}
+                              loading={actionLoading === proposal.id + 'accept'}
+                              style={styles.actionButton}
+                            >
+                              Aceitar
+                            </Button>
+                            <Button
+                              mode="outlined"
+                              textColor={colors.error}
+                              onPress={() => handleProposalAction(proposal, 'reject')}
+                              disabled={actionLoading !== null}
+                              loading={actionLoading === proposal.id + 'reject'}
+                              style={styles.actionButton}
+                            >
+                              Rejeitar
+                            </Button>
+                          </>
+                        ) : proposal.status === 'accepted' ? (
+                          <Text style={styles.acceptedText}>✓ Proposta aceita</Text>
+                        ) : proposal.status === 'rejected' ? (
+                          <Text style={styles.rejectedText}>✗ Proposta rejeitada</Text>
+                        ) : null}
                         <Button
                           mode="outlined"
                           onPress={() => handleStartChat(proposal.professionalId)}
@@ -601,14 +862,45 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     color: colors.text,
   },
+  referenceChip: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+  },
+  referenceChipText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   category: {
     fontSize: 14,
     color: colors.primary,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  categoryChip: {
+    backgroundColor: colors.primaryLight,
+    marginTop: 4,
+  },
+  categoryChipText: {
+    color: colors.primary,
+    fontSize: 12,
   },
   divider: {
     marginVertical: 16,
@@ -732,6 +1024,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.success,
     textAlign: 'center',
+  },
+  editButton: {
+    marginTop: 12,
+    marginBottom: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  deleteButton: {
+    marginTop: 12,
+    marginBottom: 8,
+    flex: 1,
+    marginLeft: 8,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  acceptedText: {
+    fontSize: 14,
+    color: colors.success,
+    fontWeight: '600',
+    marginVertical: 8,
+  },
+  rejectedText: {
+    fontSize: 14,
+    color: colors.error,
+    fontWeight: '600',
+    marginVertical: 8,
   },
 });
 

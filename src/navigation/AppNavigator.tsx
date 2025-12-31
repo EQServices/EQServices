@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useTheme } from 'react-native-paper';
 import { useThemeMode } from '../contexts/ThemeContext';
@@ -13,6 +13,7 @@ import { useDeepLinking } from '../hooks/useDeepLinking';
 // Auth Screens
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { TermsOfServiceScreen } from '../screens/TermsOfServiceScreen';
 import { CookiePolicyScreen } from '../screens/CookiePolicyScreen';
@@ -23,6 +24,7 @@ import { PublicServiceRequestScreen } from '../screens/public/PublicServiceReque
 // Client Screens
 import { ClientHomeScreen } from '../screens/client/ClientHomeScreen';
 import { NewServiceRequestScreen } from '../screens/client/NewServiceRequestScreen';
+import { EditServiceRequestScreen } from '../screens/client/EditServiceRequestScreen';
 import { ServiceRequestDetailScreen } from '../screens/client/ServiceRequestDetailScreen';
 import { ReviewScreen } from '../screens/client/ReviewScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
@@ -93,6 +95,11 @@ const AuthStack = () => (
       options={{ title: 'Criar Conta' }}
     />
     <Stack.Screen
+      name="ResetPassword"
+      component={ResetPasswordScreen}
+      options={{ title: 'Redefinir Senha' }}
+    />
+    <Stack.Screen
       name="PrivacyPolicy"
       component={PrivacyPolicyScreen}
       options={{ title: 'Política de Privacidade' }}
@@ -136,6 +143,11 @@ const ClientStack = () => (
       name="NewServiceRequest"
       component={NewServiceRequestScreen}
       options={{ title: 'Novo Pedido' }}
+    />
+    <Stack.Screen
+      name="EditServiceRequest"
+      component={EditServiceRequestScreen}
+      options={{ title: 'Editar Pedido' }}
     />
     <Stack.Screen
       name="ServiceRequestDetail"
@@ -235,6 +247,20 @@ const ClientTabs = () => (
         tabBarLabel: 'Início',
         headerShown: false,
       }}
+      listeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Resetar o stack para a tela inicial quando a aba "Início" for pressionada
+          const state = navigation.getState();
+          const clientStackState = state?.routes?.find((r: any) => r.name === 'ClientStack')?.state;
+          // Se não estiver na tela inicial, resetar o stack
+          if (clientStackState?.index !== 0 || clientStackState?.routes?.[0]?.name !== 'ClientHome') {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'ClientStack', state: { routes: [{ name: 'ClientHome' }], index: 0 } }],
+            });
+          }
+        },
+      })}
     />
     <Tab.Screen
       name="ClientChat"
@@ -376,6 +402,20 @@ const ProfessionalTabs = () => (
         tabBarLabel: 'Oportunidades',
         headerShown: false,
       }}
+      listeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Resetar o stack para a tela inicial quando a aba "Início" for pressionada
+          const state = navigation.getState();
+          const professionalStackState = state?.routes?.find((r: any) => r.name === 'ProfessionalStack')?.state;
+          // Se não estiver na tela inicial, resetar o stack
+          if (professionalStackState?.index !== 0 || professionalStackState?.routes?.[0]?.name !== 'ProfessionalHome') {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'ProfessionalStack', state: { routes: [{ name: 'ProfessionalHome' }], index: 0 } }],
+            });
+          }
+        },
+      })}
     />
     <Tab.Screen
       name="ProfessionalChat"
@@ -440,6 +480,7 @@ const linking = {
   prefixes: [
     'elastiquality://',
     'https://elastiquality.pt',
+    'https://www.eqservices.pt',
     Linking.createURL('/'),
   ],
   config: {
@@ -448,6 +489,7 @@ const linking = {
         screens: {
           Login: 'login',
           Register: 'register',
+          ResetPassword: 'reset-password',
           PublicServiceRequest: 'service/:serviceRequestId',
           PrivacyPolicy: 'privacy',
           TermsOfService: 'terms',
@@ -492,6 +534,26 @@ export const AppNavigator = () => {
   const paperTheme = useTheme();
   const { navigationTheme } = useThemeMode();
   const navigationRef = React.useRef<any>(null);
+
+  // Detectar URL de reset de senha e navegar diretamente
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && Platform.OS === 'web') {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      
+      // Se a URL contém reset-password, navegar diretamente para a tela
+      if (path.includes('/reset-password') || hash.includes('type=recovery')) {
+        // Aguardar um pouco para garantir que o NavigationContainer está pronto
+        setTimeout(() => {
+          if (navigationRef.current) {
+            navigationRef.current.navigate('AuthStack', {
+              screen: 'ResetPassword',
+            });
+          }
+        }, 100);
+      }
+    }
+  }, []);
 
   // Configurar deep linking - DEVE ser chamado antes de qualquer return condicional
   useDeepLinking(

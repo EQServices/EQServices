@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { colors } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 
 const COOKIE_CONSENT_KEY = '@elastiquality:cookie_consent';
 
@@ -51,9 +52,20 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({ onAcce
     }
   };
 
-  const handleOpenCookiesPolicy = () => {
-    if (Platform.OS === 'web') {
-      window.open('/cookies', '_blank');
+  const handleOpenCookiesPolicy = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Na web, usar window.location para navegação interna ou deep linking
+        if (typeof window !== 'undefined') {
+          const baseUrl = window.location.origin;
+          await Linking.openURL(`${baseUrl}/cookies`);
+        }
+      } else {
+        // No mobile, usar deep linking
+        await Linking.openURL('https://www.eqservices.pt/cookies');
+      }
+    } catch (error) {
+      console.error('Erro ao abrir política de cookies:', error);
     }
   };
 

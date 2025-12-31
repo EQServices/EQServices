@@ -43,11 +43,14 @@ export const sendPasswordResetEmail = async (email: string): Promise<{ success: 
   try {
     // Usar a URL base do site para o redirect
     const baseUrl = Platform.OS === 'web' 
-      ? (globalThis as any).window?.location?.origin || 'https://elastiquality.pt'
-      : 'https://elastiquality.pt';
+      ? (globalThis as any).window?.location?.origin || 'https://www.eqservices.pt'
+      : 'https://www.eqservices.pt';
+    
+    // URL de redirecionamento após reset de senha
+    const redirectUrl = `${baseUrl}/reset-password`;
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/Login`,
+      redirectTo: redirectUrl,
     });
 
     if (error) {

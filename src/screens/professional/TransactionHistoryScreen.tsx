@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, List, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { CreditTransaction, listCreditTransactions } from '../../services/stripe';
 import { useRequireUserType } from '../../hooks/useRequireUserType';
 
 export const TransactionHistoryScreen = () => {
+  const { t } = useTranslation();
   const { user, isValid } = useRequireUserType('professional');
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
@@ -42,13 +44,13 @@ export const TransactionHistoryScreen = () => {
 
   const renderItem = ({ item }: { item: CreditTransaction }) => {
     const isAddition = item.amount >= 0;
-    const amountLabel = `${isAddition ? '+' : ''}${item.amount} moedas`;
-    const timestamp = new Date(item.created_at).toLocaleString('pt-PT');
+    const amountLabel = `${isAddition ? '+' : ''}${item.amount} ${t('transactionHistory.credits')}`;
+    const timestamp = new Date(item.created_at).toLocaleString();
 
     return (
       <List.Item
-        title={item.description || 'Movimentação de créditos'}
-        description={`Saldo após operação: ${item.balance_after} moedas\n${timestamp}`}
+        title={item.description || t('transactionHistory.title')}
+        description={`${t('transactionHistory.status')}: ${item.balance_after} ${t('transactionHistory.credits')}\n${timestamp}`}
         left={(props) => <List.Icon {...props} icon={isAddition ? 'arrow-up-bold' : 'arrow-down-bold'} />}
         right={() => <Text style={isAddition ? styles.amountPositive : styles.amountNegative}>{amountLabel}</Text>}
       />
@@ -59,7 +61,7 @@ export const TransactionHistoryScreen = () => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating color={colors.professional} />
-        <Text style={styles.loaderText}>A carregar histórico...</Text>
+        <Text style={styles.loaderText}>{t('transactionHistory.loading')}</Text>
       </View>
     );
   }
@@ -68,9 +70,9 @@ export const TransactionHistoryScreen = () => {
     <View style={styles.container}>
       <Card style={styles.card}>
         <Card.Content>
-          <Text style={styles.title}>Histórico de créditos</Text>
+          <Text style={styles.title}>{t('transactionHistory.title')}</Text>
           <Text style={styles.subtitle}>
-            Veja todas as compras e movimentos de débito/crédito associados à sua conta profissional.
+            {t('transactionHistory.emptySubtext')}
           </Text>
         </Card.Content>
       </Card>
@@ -83,8 +85,8 @@ export const TransactionHistoryScreen = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.professional} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>Nenhum movimento registado</Text>
-            <Text style={styles.emptySubtitle}>As compras e consumos de créditos aparecerão aqui.</Text>
+            <Text style={styles.emptyTitle}>{t('transactionHistory.empty')}</Text>
+            <Text style={styles.emptySubtitle}>{t('transactionHistory.emptySubtext')}</Text>
           </View>
         }
       />

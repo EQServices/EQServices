@@ -32,6 +32,9 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
         id,
         service_request_id,
         created_at,
+        service_requests:service_request_id (
+          title
+        ),
         messages!messages_conversation_id_fkey (
           id,
           content,
@@ -48,12 +51,12 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
       )
     `,
     )
-    .eq('user_id', userId)
-    .order('conversations.created_at', { ascending: false });
+    .eq('user_id', userId);
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => {
+  // Mapear e ordenar após obter os dados (não podemos ordenar por campo de relacionamento diretamente)
+  const mappedConversations = (data || []).map((row: any) => {
     const conversation = row.conversations;
     const participants =
       conversation?.conversation_participants?.map((participant: any) => ({
@@ -67,9 +70,15 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
       (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )[0];
 
+    // service_requests pode ser um objeto ou array
+    const serviceRequest = Array.isArray(conversation.service_requests) 
+      ? conversation.service_requests[0] 
+      : conversation.service_requests;
+
     return {
       id: conversation.id,
       serviceRequestId: conversation.service_request_id ?? undefined,
+      serviceRequestTitle: serviceRequest?.title ?? undefined,
       createdAt: conversation.created_at,
       participants,
       lastMessage: lastMessage
@@ -86,6 +95,11 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
         : undefined,
     } as Conversation;
   });
+
+  // Ordenar por data de criação (mais recente primeiro)
+  return mappedConversations.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 };
 
 export const fetchMessages = async (conversationId: string, limit = 50): Promise<Message[]> => {
@@ -143,6 +157,9 @@ export const fetchConversation = async (conversationId: string): Promise<Convers
       id,
       service_request_id,
       created_at,
+      service_requests:service_request_id (
+        title
+      ),
       conversation_participants (
         user_id,
         role,
@@ -164,9 +181,15 @@ export const fetchConversation = async (conversationId: string): Promise<Convers
       displayName: participant.display_name ?? undefined,
     })) || [];
 
+  // service_requests pode ser um objeto ou array dependendo da query
+  const serviceRequest = Array.isArray(data.service_requests) 
+    ? data.service_requests[0] 
+    : data.service_requests;
+
   return {
     id: data.id,
     serviceRequestId: data.service_request_id ?? undefined,
+    serviceRequestTitle: serviceRequest?.title ?? undefined,
     createdAt: data.created_at,
     participants,
   };
@@ -242,8 +265,16 @@ export const subscribeToMessages = (
   conversationId: string,
   callback: (payload: { new: any }) => void,
 ) => {
+  const channelName = `conversation:${conversationId}`;
+  
+  // Nota: Não podemos verificar canais existentes diretamente, mas o Supabase gerencia isso automaticamente
+  
   const channel = supabase
-    .channel(`conversation:${conversationId}`)
+    .channel(channelName, {
+      config: {
+        broadcast: { self: true },
+      },
+    })
     .on(
       'postgres_changes',
       {
@@ -252,12 +283,47 @@ export const subscribeToMessages = (
         table: 'messages',
         filter: `conversation_id=eq.${conversationId}`,
       },
-      callback,
+      async (payload) => {
+        // Buscar informações do sender para a nova mensagem
+        if (payload.new?.sender_id) {
+          try {
+            const { data: senderData } = await supabase
+              .from('users')
+              .select('id, name')
+              .eq('id', payload.new.sender_id)
+              .single();
+            
+            if (senderData) {
+              payload.new.sender = { id: senderData.id, name: senderData.name };
+            }
+          } catch (err) {
+            console.warn('Erro ao buscar sender da mensagem:', err);
+          }
+        }
+        callback(payload);
+      },
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[Chat] Subscribed to channel: ${channelName}`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Chat] Error subscribing to channel: ${channelName}`, status);
+      } else if (status === 'TIMED_OUT') {
+        console.warn(`[Chat] Subscription timed out for channel: ${channelName}`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Chat] Channel closed: ${channelName}`);
+      } else {
+        console.log(`[Chat] Channel status: ${status} for ${channelName}`);
+      }
+    });
 
   return () => {
-    supabase.removeChannel(channel);
+    console.log(`[Chat] Unsubscribing from channel: ${channelName}`);
+    try {
+      supabase.removeChannel(channel);
+    } catch (err) {
+      console.warn('Erro ao remover canal:', err);
+    }
   };
 };
 

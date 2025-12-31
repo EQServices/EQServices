@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform, Alert } from 'react-native';
 import { Text, Card, ActivityIndicator, Chip, Button, DataTable, IconButton } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
 import { AppLogo } from '../../components/AppLogo';
-
-const CONFIRM_LOGOUT_MESSAGE =
-  'Tem a certeza de que pretende terminar sessão? Poderá voltar a entrar quando quiser.';
 
 interface AdminStats {
   total_clientes: number;
@@ -31,6 +29,7 @@ interface CashFlow {
 }
 
 export const AdminDashboardScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
@@ -80,15 +79,15 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
       // Na web, usar confirm do navegador
-      const confirmed = (globalThis as any).window?.confirm(CONFIRM_LOGOUT_MESSAGE);
+      const confirmed = (globalThis as any).window?.confirm(t('admin.dashboard.logoutConfirm'));
       if (!confirmed) return;
       await performLogout();
     } else {
       // No mobile, usar Alert
-      Alert.alert('Terminar sessão', CONFIRM_LOGOUT_MESSAGE, [
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert(t('admin.dashboard.logout'), t('admin.dashboard.logoutConfirm'), [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Terminar sessão',
+          text: t('admin.dashboard.logout'),
           style: 'destructive',
           onPress: async () => {
             await performLogout();
@@ -103,11 +102,11 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
       await signOut();
     } catch (err) {
       console.error('Erro ao terminar sessão:', err);
-      const errorMessage = 'Não foi possível terminar a sessão. Tente novamente.';
+      const errorMessage = t('common.error');
       if (Platform.OS === 'web') {
         (globalThis as any).window?.alert(errorMessage);
       } else {
-        Alert.alert('Erro', errorMessage);
+        Alert.alert(t('common.error'), errorMessage);
       }
     }
   };
@@ -116,7 +115,7 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating={true} color={colors.primary} size="large" />
-        <Text style={styles.loadingText}>A carregar dashboard...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -139,29 +138,29 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
             style={styles.logoutButton}
           />
         </View>
-        <Text style={styles.title}>Dashboard Administrativo</Text>
+        <Text style={styles.title}>{t('admin.dashboard.title')}</Text>
       </View>
 
       {/* Estatísticas Gerais */}
       <Card style={styles.card}>
-        <Card.Title title="Estatísticas Gerais" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.dashboard.stats.title')} titleStyle={styles.cardTitle} />
         <Card.Content>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats?.total_clientes || 0}</Text>
-              <Text style={styles.statLabel}>Clientes</Text>
+              <Text style={styles.statLabel}>{t('admin.dashboard.stats.clients')}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats?.total_profissionais || 0}</Text>
-              <Text style={styles.statLabel}>Profissionais</Text>
+              <Text style={styles.statLabel}>{t('admin.dashboard.stats.professionals')}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats?.total_pedidos || 0}</Text>
-              <Text style={styles.statLabel}>Pedidos</Text>
+              <Text style={styles.statLabel}>{t('admin.dashboard.stats.requests')}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats?.pedidos_pendentes || 0}</Text>
-              <Text style={styles.statLabel}>Pendentes</Text>
+              <Text style={styles.statLabel}>{t('admin.dashboard.stats.pendingRequests')}</Text>
             </View>
           </View>
         </Card.Content>
@@ -169,19 +168,19 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
 
       {/* Fluxo de Caixa */}
       <Card style={styles.card}>
-        <Card.Title title="Fluxo de Caixa" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.dashboard.cashFlow')} titleStyle={styles.cardTitle} />
         <Card.Content>
           {cashFlow.map((item, index) => (
             <View key={index} style={styles.cashFlowItem}>
               <Text style={styles.cashFlowType}>{item.tipo_transacao}</Text>
               <View style={styles.cashFlowDetails}>
                 <Text style={styles.cashFlowValue}>€{item.valor_total.toFixed(2)}</Text>
-                <Text style={styles.cashFlowQuantity}>{item.quantidade} transações</Text>
+                <Text style={styles.cashFlowQuantity}>{item.quantidade} {t('admin.dashboard.transactions')}</Text>
               </View>
             </View>
           ))}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Receita Total:</Text>
+            <Text style={styles.totalLabel}>{t('admin.dashboard.stats.totalRevenue')}:</Text>
             <Text style={styles.totalValue}>
               €{cashFlow.reduce((sum, item) => sum + item.valor_total, 0).toFixed(2)}
             </Text>
@@ -191,7 +190,7 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
 
       {/* Ações Rápidas */}
       <Card style={styles.card}>
-        <Card.Title title="Ações Rápidas" titleStyle={styles.cardTitle} />
+        <Card.Title title={t('admin.dashboard.quickActions')} titleStyle={styles.cardTitle} />
         <Card.Content>
           <Button
             mode="contained"
@@ -199,7 +198,7 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
             style={styles.actionButton}
             icon="account-group"
           >
-            Ver Usuários
+            {t('admin.dashboard.users')}
           </Button>
           <Button
             mode="contained"
@@ -207,7 +206,7 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
             style={styles.actionButton}
             icon="clipboard-list"
           >
-            Ver Pedidos
+            {t('admin.dashboard.orders')}
           </Button>
           <Button
             mode="contained"
@@ -215,7 +214,7 @@ export const AdminDashboardScreen = ({ navigation }: any) => {
             style={styles.actionButton}
             icon="cash-multiple"
           >
-            Ver Fluxo de Caixa
+            {t('admin.dashboard.cashFlow')}
           </Button>
         </Card.Content>
       </Card>

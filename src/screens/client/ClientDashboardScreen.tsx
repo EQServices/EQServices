@@ -234,6 +234,8 @@ export const ClientDashboardScreen: React.FC = () => {
                   dateStyle: 'medium',
                 })}`}
                 left={(props) => <List.Icon {...props} icon="clipboard-text" />}
+                onPress={() => (navigation as any).navigate('ServiceRequestDetail', { requestId: request.id })}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
               />
             ))
           )}
@@ -254,6 +256,8 @@ export const ClientDashboardScreen: React.FC = () => {
                   dateStyle: 'medium',
                 })}`}
                 left={(props) => <List.Icon {...props} icon="email" />}
+                onPress={() => (navigation as any).navigate('ServiceRequestDetail', { requestId: proposal.serviceRequestId })}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
               />
             ))
           )}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, Platform, Alert } from 'react-native';
-import { Card, Text, Switch, Button, Divider, List, ActivityIndicator } from 'react-native-paper';
+import { Card, Text, Switch, Button, Divider, List, ActivityIndicator, Menu } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 import { useBiometry } from '../hooks/useBiometry';
 import { useNetwork } from '../hooks/useNetwork';
@@ -11,6 +13,8 @@ import { formatNetworkType } from '../services/network';
 
 export const SettingsScreen = ({ navigation }: any) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
   const {
     available: biometryAvailable,
     biometryType,
@@ -25,6 +29,7 @@ export const SettingsScreen = ({ navigation }: any) => {
   const [syncQueueStats, setSyncQueueStats] = useState<{ total: number; byPriority: Record<number, number> } | null>(null);
   const [loadingCache, setLoadingCache] = useState(false);
   const [loadingSync, setLoadingSync] = useState(false);
+  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
 
   useEffect(() => {
     loadCacheInfo();
@@ -138,8 +143,53 @@ export const SettingsScreen = ({ navigation }: any) => {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const handleLanguageChange = async (languageCode: string) => {
+    setLanguageMenuVisible(false);
+    await changeLanguage(languageCode);
+  };
+
+  const currentLanguageName = availableLanguages.find((lang) => lang.code === currentLanguage)?.name || currentLanguage;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Seção de Idioma */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('settings.languageDescription')}</Text>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>{t('settings.language')}</Text>
+              <Text style={styles.settingDescription}>{currentLanguageName}</Text>
+            </View>
+            <Menu
+              visible={languageMenuVisible}
+              onDismiss={() => setLanguageMenuVisible(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setLanguageMenuVisible(true)}
+                  icon="chevron-down"
+                  compact
+                >
+                  {t('common.edit')}
+                </Button>
+              }
+            >
+              {availableLanguages.map((lang) => (
+                <Menu.Item
+                  key={lang.code}
+                  onPress={() => handleLanguageChange(lang.code)}
+                  title={lang.name}
+                  titleStyle={currentLanguage === lang.code ? { fontWeight: 'bold' } : {}}
+                />
+              ))}
+            </Menu>
+          </View>
+        </Card.Content>
+      </Card>
+
       {/* Seção de Biometria */}
       {Platform.OS !== 'web' && biometryAvailable && (
         <Card style={styles.card}>

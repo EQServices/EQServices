@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, Card, ActivityIndicator, Chip, Searchbar } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { supabase } from '../../config/supabase';
@@ -21,6 +22,7 @@ interface Order {
 }
 
 export const AdminOrdersScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -98,16 +100,16 @@ export const AdminOrdersScreen = ({ navigation }: any) => {
             {item.status}
           </Chip>
         </View>
-        <Text style={styles.clientInfo}>Cliente: {item.cliente_nome} ({item.cliente_email})</Text>
-        {item.budget && <Text style={styles.budgetText}>Orçamento: €{item.budget.toFixed(2)}</Text>}
+        <Text style={styles.clientInfo}>{t('admin.orders.client')} {item.cliente_nome} ({item.cliente_email})</Text>
+        {item.budget && <Text style={styles.budgetText}>{t('admin.orders.budget')} €{item.budget.toFixed(2)}</Text>}
         <View style={styles.statsRow}>
-          <Text style={styles.statText}>Propostas: {item.total_propostas}</Text>
-          <Text style={styles.statText}>Desbloqueios: {item.total_desbloqueios}</Text>
-          <Text style={styles.statText}>Avaliações: {item.total_avaliacoes}</Text>
+          <Text style={styles.statText}>{t('admin.orders.proposals')} {item.total_propostas}</Text>
+          <Text style={styles.statText}>{t('admin.orders.unlocks')} {item.total_desbloqueios}</Text>
+          <Text style={styles.statText}>{t('admin.orders.reviews')} {item.total_avaliacoes}</Text>
         </View>
-        <Text style={styles.dateText}>Criado em: {new Date(item.created_at).toLocaleDateString('pt-PT')}</Text>
+        <Text style={styles.dateText}>{t('admin.orders.createdAt')} {new Date(item.created_at).toLocaleDateString()}</Text>
         {item.completed_at && (
-          <Text style={styles.dateText}>Completado em: {new Date(item.completed_at).toLocaleDateString('pt-PT')}</Text>
+          <Text style={styles.dateText}>{t('admin.orders.completedAt')} {new Date(item.completed_at).toLocaleDateString()}</Text>
         )}
       </Card.Content>
     </Card>
@@ -117,7 +119,7 @@ export const AdminOrdersScreen = ({ navigation }: any) => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator animating={true} color={colors.primary} size="large" />
-        <Text style={styles.loadingText}>A carregar pedidos...</Text>
+        <Text style={styles.loadingText}>{t('admin.orders.loading')}</Text>
       </View>
     );
   }
@@ -125,7 +127,7 @@ export const AdminOrdersScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <Searchbar
-        placeholder="Pesquisar pedidos..."
+        placeholder={t('admin.orders.search')}
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchbar}
@@ -138,7 +140,7 @@ export const AdminOrdersScreen = ({ navigation }: any) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhum pedido encontrado</Text>
+            <Text style={styles.emptyText}>{t('admin.orders.empty')}</Text>
           </View>
         }
       />

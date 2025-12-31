@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, List, Text } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/config';
 import { colors } from '../../theme/colors';
 import { Lead, ServiceRequest } from '../../types';
 import { supabase } from '../../config/supabase';
@@ -45,6 +47,7 @@ const mapServiceRequest = (row: any): ServiceRequest => ({
 });
 
 export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { leadId, serviceRequestId: routeServiceRequestId } = route.params;
   const { user, isValid } = useRequireUserType('professional');
   const [lead, setLead] = useState<Lead | null>(null);
@@ -119,9 +122,12 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
           .maybeSingle();
 
         if (existingError && existingError.code !== 'PGRST116') {
+          console.error('[DEBUG LeadDetail] Erro ao buscar proposta:', existingError);
           throw existingError;
         }
 
+        console.log('[DEBUG LeadDetail] Proposta encontrada:', existingProposal);
+        console.log('[DEBUG LeadDetail] Status da proposta:', existingProposal?.status);
         setProposalStatus(existingProposal?.status ?? null);
       }
     } catch (err: any) {
@@ -202,7 +208,7 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
   if (!lead) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyText}>Lead não encontrado.</Text>
+        <Text style={styles.emptyText}>{t('professional.leadDetail.notFound')}</Text>
       </View>
     );
   }
@@ -212,28 +218,28 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
       <Card style={styles.card}>
         <Card.Content>
           <Text style={styles.title}>{lead.category}</Text>
-          <Text style={styles.subtitle}>Custo: {lead.cost} moedas</Text>
+          <Text style={styles.subtitle}>{t('professional.leadDetail.cost', { cost: lead.cost })}</Text>
 
           <Divider style={styles.divider} />
 
-          <Text style={styles.sectionLabel}>Descrição resumida</Text>
+          <Text style={styles.sectionLabel}>{t('professional.leadDetail.summaryDescription')}</Text>
           <Text style={styles.bodyText}>{lead.description}</Text>
 
-          <Text style={styles.sectionLabel}>Localização</Text>
+          <Text style={styles.sectionLabel}>{t('professional.leadDetail.location')}</Text>
           <Text style={styles.bodyText}>{lead.location}</Text>
 
           {serviceRequest?.photos && serviceRequest.photos.length > 0 ? (
             <>
-              <Text style={styles.sectionLabel}>Fotos enviadas pelo cliente</Text>
+              <Text style={styles.sectionLabel}>{t('professional.leadDetail.clientPhotos')}</Text>
               <ImageGallery images={serviceRequest.photos} />
             </>
           ) : null}
 
           {lead.createdAt ? (
             <>
-              <Text style={styles.sectionLabel}>Criado em</Text>
+              <Text style={styles.sectionLabel}>{t('professional.leadDetail.createdAt')}</Text>
               <Text style={styles.bodyText}>
-                {new Date(lead.createdAt).toLocaleString('pt-PT', { dateStyle: 'long', timeStyle: 'short' })}
+                {new Date(lead.createdAt).toLocaleString(i18n.language || 'pt-PT', { dateStyle: 'long', timeStyle: 'short' })}
               </Text>
             </>
           ) : null}
@@ -245,7 +251,7 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
             buttonColor={colors.secondary}
             disabled={!serviceRequest}
           >
-            Conversar com o cliente
+            {t('professional.leadDetail.chatWithClient')}
           </Button>
 
           <Button
@@ -253,9 +259,17 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ navigation, 
             onPress={handleSendProposal}
             style={styles.proposalButton}
             buttonColor={colors.secondary}
-            disabled={!user?.id || proposalStatus === 'accepted'}
+            disabled={!user?.id || !!proposalStatus}
           >
-            {proposalStatus ? `Proposta ${proposalStatus === 'pending' ? 'pendente' : 'enviada'}` : 'Enviar proposta'}
+            {proposalStatus 
+              ? (proposalStatus === 'pending' 
+                  ? 'Proposta Enviada'
+                  : proposalStatus === 'accepted' 
+                    ? t('professional.leadDetail.proposalStatus', { status: t('client.requestDetail.status.active') })
+                    : proposalStatus === 'rejected'
+                      ? 'Proposta Rejeitada'
+                      : 'Proposta Enviada')
+              : t('professional.leadDetail.sendProposal')}
           </Button>
           {proposalStatus === 'accepted' ? (
             <Text style={styles.infoText}>

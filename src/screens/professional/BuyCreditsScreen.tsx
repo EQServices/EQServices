@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Platform } from 'react-native';
 import { Text, Card, Button, Chip } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../theme/colors';
 import { CreditPackage } from '../../types';
@@ -11,6 +12,7 @@ import { useRequireUserType } from '../../hooks/useRequireUserType';
 import { AppLogo } from '../../components/AppLogo';
 
 export const BuyCreditsScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const { user, isValid } = useRequireUserType('professional');
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,9 +25,24 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
         .select('*')
         .eq('active', true)
         .order('credits', { ascending: true });
+      
+      // Remover duplicatas por name+credits (manter apenas o primeiro)
+      if (data) {
+        const seen = new Set<string>();
+        const unique = data.filter((pkg) => {
+          const key = `${pkg.name}-${pkg.credits}`;
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        });
+        setPackages(unique);
+      } else {
+        setPackages([]);
+      }
 
       if (error) throw error;
-      setPackages(data || []);
     } catch (error) {
       console.error('Erro ao carregar pacotes:', error);
     } finally {
@@ -102,7 +119,7 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
               style={styles.discountChip}
               textStyle={{ color: colors.textLight, fontWeight: 'bold' }}
             >
-              -{item.discount}% DESCONTO
+              -{item.discount}% {t('professional.buyCredits.discount')}
             </Chip>
           )}
           
@@ -110,7 +127,7 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
           
           <View style={styles.creditsContainer}>
             <Text style={styles.creditsAmount}>{item.credits}</Text>
-            <Text style={styles.creditsLabel}>moedas</Text>
+            <Text style={styles.creditsLabel}>{t('professional.buyCredits.credits')}</Text>
           </View>
 
           <View style={styles.priceContainer}>
@@ -119,7 +136,7 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
           </View>
 
           <Text style={styles.pricePerCredit}>
-            €{pricePerCredit.toFixed(2)} por moeda
+            {t('professional.buyCredits.perCredit', { price: pricePerCredit.toFixed(2) })}
           </Text>
 
           <Button
@@ -130,11 +147,11 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
             style={styles.buyButton}
             buttonColor={colors.secondary}
           >
-            Comprar Agora
+            {t('professional.buyCredits.buyNow')}
           </Button>
 
           <Text style={styles.expiryInfo}>
-            Válido por 3 meses após a compra. Pagamento seguro via Stripe Checkout.
+            {t('professional.buyCredits.securePayment')}
           </Text>
         </Card.Content>
       </Card>
@@ -147,21 +164,18 @@ export const BuyCreditsScreen = ({ navigation }: any) => {
         <AppLogo size={150} withBackground />
       </View>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Comprar Créditos</Text>
+        <Text style={styles.headerTitle}>{t('professional.buyCredits.title')}</Text>
         <Text style={styles.headerSubtitle}>
-          Use créditos para desbloquear leads e enviar propostas
+          {t('professional.buyCredits.subtitle')}
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Text style={styles.infoTitle}>Como funciona?</Text>
+            <Text style={styles.infoTitle}>{t('professional.buyCredits.howItWorks')}</Text>
             <Text style={styles.infoText}>
-              • Cada lead tem um custo em moedas{'\n'}
-              • O custo varia por categoria e demanda{'\n'}
-              • Créditos expiram em 3 meses{'\n'}
-              • Pagamento seguro com cartão ou carteira digital
+              {t('professional.buyCredits.howItWorksText')}
             </Text>
           </Card.Content>
         </Card>

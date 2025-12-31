@@ -1,15 +1,17 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Text, Card } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 
 export const PrivacyPolicyScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Card style={styles.card}>
         <Card.Content>
-          <Text style={styles.title}>Política de Privacidade</Text>
-          <Text style={styles.lastUpdated}>Última atualização: {new Date().toLocaleDateString('pt-PT')}</Text>
+          <Text style={styles.title}>{t('policies.privacy.title')}</Text>
+          <Text style={styles.lastUpdated}>{t('policies.privacy.lastUpdated')}: {new Date().toLocaleDateString()}</Text>
 
           <Text style={styles.sectionTitle}>1. Introdução</Text>
           <Text style={styles.text}>
@@ -84,8 +86,8 @@ export const PrivacyPolicyScreen = ({ navigation }: any) => {
           <Text style={styles.text}>
             Para questões sobre esta política de privacidade ou para exercer os seus direitos, contacte-nos em:
           </Text>
-          <Text style={styles.contact}>Email: privacidade@elastiquality.pt</Text>
-          <Text style={styles.contact}>Suporte: suporte@elastiquality.pt</Text>
+          <Text style={styles.contact}>Email: privacidade@eqservices.pt</Text>
+          <Text style={styles.contact}>Suporte: suporte@eqservices.pt</Text>
         </Card.Content>
       </Card>
     </ScrollView>

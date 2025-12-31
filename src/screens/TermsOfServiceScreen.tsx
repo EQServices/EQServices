@@ -1,15 +1,17 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Text, Card } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 
 export const TermsOfServiceScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Card style={styles.card}>
         <Card.Content>
-          <Text style={styles.title}>Termos de Uso</Text>
-          <Text style={styles.lastUpdated}>Última atualização: {new Date().toLocaleDateString('pt-PT')}</Text>
+          <Text style={styles.title}>{t('policies.terms.title')}</Text>
+          <Text style={styles.lastUpdated}>{t('policies.terms.lastUpdated')}: {new Date().toLocaleDateString()}</Text>
 
           <Text style={styles.sectionTitle}>1. Aceitação dos Termos</Text>
           <Text style={styles.text}>
@@ -109,8 +111,8 @@ export const TermsOfServiceScreen = ({ navigation }: any) => {
           <Text style={styles.text}>
             Para questões sobre estes termos, contacte-nos em:
           </Text>
-          <Text style={styles.contact}>Email: legal@elastiquality.pt</Text>
-          <Text style={styles.contact}>Suporte: suporte@elastiquality.pt</Text>
+          <Text style={styles.contact}>Email: legal@eqservices.pt</Text>
+          <Text style={styles.contact}>Suporte: suporte@eqservices.pt</Text>
         </Card.Content>
       </Card>
     </ScrollView>

@@ -37,7 +37,8 @@ export interface Professional extends User {
 export interface ServiceRequest {
   id: string;
   clientId: string;
-  category: string;
+  categories: string[]; // Múltiplas categorias permitidas
+  category?: string; // Mantido para compatibilidade com código legado
   title: string;
   description: string;
   location: string;
@@ -48,6 +49,7 @@ export interface ServiceRequest {
   status: 'pending' | 'active' | 'completed' | 'cancelled';
   completedAt?: string | null;
   createdAt: string;
+  referenceNumber?: string; // Número de referência único (ex: PED-12345)
 }
 
 export interface Proposal {
@@ -97,6 +99,7 @@ export interface Lead {
 export interface Conversation {
   id: string;
   serviceRequestId?: string;
+  serviceRequestTitle?: string;
   participants: ConversationParticipant[];
   lastMessage?: Message;
   createdAt: string;
